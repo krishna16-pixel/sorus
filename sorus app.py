@@ -5,16 +5,18 @@ from pathlib import Path
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from datetime import datetime
+import requests
+from urllib.parse import urlencode
 
 
 st.set_page_config(
-    page_title="Sorus AI",
-    page_icon="➰",
+    page_title="Sorus AI Pro",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ==================== CSS ====================
+# ==================== CSS WITH IMPROVED POPUP ====================
 st.markdown("""
 <style>
     @keyframes fadeIn {
@@ -25,6 +27,11 @@ st.markdown("""
     @keyframes slideInRight {
         from { transform: translateX(400px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes fadeInBackdrop {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 
     .stMarkdown { animation: fadeIn 0.3s ease-in; }
@@ -126,100 +133,150 @@ st.markdown("""
         margin: 16px 0 8px 0;
     }
 
-    /* Floating Resource Modal */
-    .resource-popup {
+    /* FIXED MODAL POPUP */
+    .modal-backdrop {
         position: fixed;
-        top: 80px;
-        right: 20px;
-        width: 420px;
-        max-height: 600px;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 998;
+        animation: fadeInBackdrop 0.3s ease-out;
+    }
+
+    .modal-content {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 600px;
+        max-height: 85vh;
         background: white;
-        border: 2px solid #667eea;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         z-index: 999;
         overflow-y: auto;
         animation: slideInRight 0.4s ease-out;
     }
 
-    .resource-popup::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .resource-popup::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 3px;
-    }
-
-    .resource-popup::-webkit-scrollbar-thumb {
-        background: #667eea;
-        border-radius: 3px;
-    }
-
-    .resource-popup h3 {
-        color: #667eea;
-        margin-top: 0;
+    .modal-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        margin-bottom: 20px;
     }
 
-    .close-popup {
+    .modal-header h2 {
+        color: #667eea;
+        margin: 0;
+        font-size: 24px;
+    }
+
+    .close-btn {
         background: #e74c3c;
         color: white;
         border: none;
         border-radius: 50%;
-        width: 24px;
-        height: 24px;
+        width: 32px;
+        height: 32px;
+        font-size: 20px;
         cursor: pointer;
-        font-size: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0;
+        transition: all 0.2s;
     }
 
-    .close-popup:hover {
+    .close-btn:hover {
         background: #c0392b;
+        transform: scale(1.1);
     }
 
-    .resource-form {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
+    .form-group {
+        margin-bottom: 16px;
     }
 
-    .resource-form input {
-        padding: 10px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 6px;
         font-size: 14px;
     }
 
-    .resource-form textarea {
-        padding: 10px;
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 12px;
         border: 1px solid #d1d5db;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 14px;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    .form-group textarea {
         resize: vertical;
-        min-height: 80px;
+        min-height: 100px;
     }
 
-    .resource-submit {
+    .form-group input:focus,
+    .form-group textarea:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .submit-btn {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
-        border-radius: 6px;
-        padding: 10px;
+        border-radius: 8px;
+        padding: 12px 20px;
         font-weight: 600;
         cursor: pointer;
+        width: 100%;
         transition: all 0.3s;
+        font-size: 15px;
     }
 
-    .resource-submit:hover {
+    .submit-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .web-search-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(52, 152, 219, 0.2));
+        color: #27ae60;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        margin: 8px 0;
+        border: 1px solid rgba(46, 204, 113, 0.3);
+    }
+
+    .tavily-sources {
+        background: rgba(52, 152, 219, 0.05);
+        border-left: 4px solid #3498db;
+        padding: 12px;
+        margin: 12px 0;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+
+    .tavily-sources a {
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .tavily-sources a:hover {
+        text-decoration: underline;
     }
 
     .error-analysis {
@@ -240,20 +297,34 @@ st.markdown("""
         background: #e74c3c;
         border-radius: 2px;
     }
+
+    .loading-spinner {
+        display: inline-block;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ==================== SETUP ====================
-API_KEY = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY"))
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY"))
+TAVILY_API_KEY = st.secrets.get("TAVILY_API_KEY", os.getenv("TAVILY_API_KEY"))
 
-if not API_KEY:
+if not GROQ_API_KEY:
     st.error("❌ Please set GROQ_API_KEY in .streamlit/secrets.toml")
     st.stop()
+
+if not TAVILY_API_KEY:
+    st.warning("⚠️ TAVILY_API_KEY not set. Web search features will be limited.")
 
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
     temperature=0.9,
-    api_key=API_KEY
+    api_key=GROQ_API_KEY
 )
 
 Path("generated_code").mkdir(exist_ok=True)
@@ -265,29 +336,76 @@ if "generated_files" not in st.session_state:
     st.session_state.generated_files = []
 if "current_response" not in st.session_state:
     st.session_state.current_response = None
-if "show_resource_popup" not in st.session_state:
-    st.session_state.show_resource_popup = False
-if "resource_analysis" not in st.session_state:
-    st.session_state.resource_analysis = None
+if "show_modal" not in st.session_state:
+    st.session_state.show_modal = False
+if "modal_type" not in st.session_state:
+    st.session_state.modal_type = None
 
-# ==================== HELPER FUNCTIONS ====================
+# ==================== TAVILY WEB SEARCH INTEGRATION ====================
 
-def save_code(filename, code, language):
-    ext = {"python": "py", "javascript": "js", "java": "java", "cpp": "cpp"}.get(language, "txt")
-    path = f"generated_code/{filename}.{ext}"
-    with open(path, "w") as f:
-        f.write(code)
-    st.session_state.generated_files.append({
-        "name": filename, 
-        "path": path, 
-        "code": code,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
-    })
-    return path
+def tavily_search(query):
+    """Search using Tavily API - optimized for AI applications"""
+    if not TAVILY_API_KEY:
+        return {"success": False, "error": "Tavily API key not configured"}
+    
+    try:
+        url = "https://api.tavily.com/search"
+        payload = {
+            "api_key": TAVILY_API_KEY,
+            "query": query,
+            "include_answer": True,
+            "max_results": 5,
+            "include_images": False,
+            "search_depth": "advanced"
+        }
+        
+        response = requests.post(url, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Extract answer and sources
+            answer = data.get("answer", "")
+            results = data.get("results", [])
+            
+            sources_text = ""
+            for i, result in enumerate(results[:3], 1):
+                sources_text += f"\n{i}. {result.get('title', '')}\n   {result.get('url', '')}"
+            
+            return {
+                "success": True,
+                "answer": answer,
+                "sources": sources_text,
+                "results": results
+            }
+        else:
+            return {"success": False, "error": f"API error: {response.status_code}"}
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
-def stream_response(placeholder, template, variables):
-    """Stream response from LLM with live updates"""
-    prompt = PromptTemplate(template=template, input_variables=list(variables.keys()))
+def stream_response_with_web(placeholder, template, variables, include_web_search=False, search_query=None):
+    """Stream response with Tavily web search integration"""
+    
+    web_context = ""
+    sources_display = ""
+    
+    if include_web_search and search_query and TAVILY_API_KEY:
+        with st.spinner("🔍 Searching web with Tavily..."):
+            search_result = tavily_search(search_query)
+            if search_result.get("success"):
+                web_answer = search_result.get("answer", "")
+                sources = search_result.get("sources", "")
+                
+                web_context = f"\n\n[WEB SEARCH CONTEXT]\n{web_answer}\n\nSOURCES:{sources}"
+                sources_display = sources
+    
+    # Enhanced template with web context
+    enhanced_template = template
+    if web_context:
+        enhanced_template = template + web_context
+    
+    prompt = PromptTemplate(template=enhanced_template, input_variables=list(variables.keys()))
     chain = prompt | llm
     full_response = ""
     
@@ -304,6 +422,11 @@ def stream_response(placeholder, template, variables):
         response = chain.invoke(variables)
         full_response = response.content if hasattr(response, 'content') else str(response)
         placeholder.markdown(full_response)
+    
+    # Display sources if available
+    if sources_display:
+        with st.expander("📚 Sources used"):
+            st.markdown(sources_display)
     
     return full_response
 
@@ -324,19 +447,102 @@ def add_to_history(role, content, section):
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
     })
 
+def save_code(filename, code, language):
+    ext = {"python": "py", "javascript": "js", "java": "java", "cpp": "cpp"}.get(language, "txt")
+    path = f"generated_code/{filename}.{ext}"
+    with open(path, "w") as f:
+        f.write(code)
+    st.session_state.generated_files.append({
+        "name": filename, 
+        "path": path, 
+        "code": code,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
+    })
+    return path
+
 def show_disclaimer():
     st.markdown("---")
     st.info("⚠️ **Note from Sorus**: I'm an AI and can make mistakes. Always test and verify code before using in production!")
 
-def load_history_item(index):
-    """Load a history item"""
-    if 0 <= index < len(st.session_state.chat_history):
-        item = st.session_state.chat_history[index]
-        st.rerun()
+# ==================== MODAL COMPONENT ====================
+
+def show_resource_modal(code):
+    """Show resource analysis modal"""
+    col1, col2, col3 = st.columns([1, 10, 1])
+    
+    with col2:
+        st.markdown("""
+        <div class="modal-backdrop" id="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Resource Analysis</h2>
+                <button class="close-btn" onclick="document.getElementById('modal-backdrop').remove()">✕</button>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        with st.form("resource_analysis_form"):
+            st.markdown('<div class="form-group">', unsafe_allow_html=True)
+            memory = st.text_input("Memory Limit (MB)", value="512")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="form-group">', unsafe_allow_html=True)
+            time_limit = st.text_input("Time Limit (seconds)", value="10")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="form-group">', unsafe_allow_html=True)
+            input_size = st.text_input("Input Data Size", value="10000 elements")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="form-group">', unsafe_allow_html=True)
+            py_version = st.text_input("Python Version", value="3.10+")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="form-group">', unsafe_allow_html=True)
+            st.write("Available Dependencies")
+            dependencies = st.text_area("", value="Standard library only", height=80, label_visibility="collapsed")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            if st.form_submit_button("🔍 Deep Analysis", use_container_width=True):
+                analysis_ph = st.empty()
+                
+                analysis = stream_response_with_web(
+                    analysis_ph,
+                    "Perform DEEP resource-based analysis:\n\n"
+                    "CONSTRAINTS:\n"
+                    "- Memory: {mem} MB\n"
+                    "- Time: {time} seconds\n"
+                    "- Input: {size}\n"
+                    "- Python: {py}\n"
+                    "- Dependencies: {deps}\n\n"
+                    "CODE:\n{code}\n\n"
+                    "COMPREHENSIVE ANALYSIS:\n"
+                    "1. RUNTIME ERRORS: All possible errors for these constraints\n"
+                    "2. PERFORMANCE: Bottlenecks and execution time estimate\n"
+                    "3. MEMORY: Will it fit? Memory usage per operation\n"
+                    "4. EDGE CASES: Inputs that will break this code\n"
+                    "5. COMPATIBILITY: Python version issues\n"
+                    "6. OPTIMIZATION: Specific fixes for these constraints\n"
+                    "7. WARNINGS: Any dangerous patterns\n\n"
+                    "Be thorough and provide line-number references.",
+                    {
+                        "mem": memory,
+                        "time": time_limit,
+                        "size": input_size,
+                        "py": py_version,
+                        "deps": dependencies,
+                        "code": code
+                    },
+                    include_web_search=True,
+                    search_query=f"Python performance optimization {py_version} memory constraints"
+                )
+                
+                st.success("✅ Deep analysis complete!")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== SIDEBAR ====================
-st.sidebar.title("🎓 Sorus AI")
-st.sidebar.markdown("*Professional Code Builder*")
+st.sidebar.title("⚡ Sorus AI Pro")
+st.sidebar.markdown("*Advanced Code Generation & Analysis*")
 st.sidebar.markdown("---")
 
 sections = [
@@ -363,7 +569,6 @@ with col1:
         st.session_state.chat_history = []
         st.session_state.generated_files = []
         st.session_state.current_response = None
-        st.session_state.show_resource_popup = False
         st.rerun()
 
 with col2:
@@ -372,14 +577,12 @@ with col2:
         st.session_state.generated_files = []
         st.rerun()
 
-# Display Chat History
 st.sidebar.markdown("---")
 st.sidebar.subheader("💬 Chat History")
 
 if st.session_state.chat_history:
     for i, item in enumerate(st.session_state.chat_history):
         emoji = "👤" if item["role"] == "user" else "🤖"
-        
         st.sidebar.markdown(f"""
         <div class="history-item">
             {emoji} {item['content']}
@@ -389,7 +592,6 @@ if st.session_state.chat_history:
 else:
     st.sidebar.markdown("*No chat history yet*")
 
-# Display Generated Files
 st.sidebar.markdown("---")
 st.sidebar.subheader("💾 Generated Files")
 
@@ -405,259 +607,120 @@ else:
     st.sidebar.markdown("*No files generated yet*")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Made with ❤️ for Excellence**")
+st.sidebar.markdown("**Made with ⚡ for Excellence**")
 
 # ==================== MAIN TITLE ====================
-st.title("🎓 Sorus AI")
-st.markdown("✨ Professional-grade code generation with deep analysis and streaming responses")
+st.title("⚡ Sorus AI Pro")
+st.markdown("✨ Production-grade code generation with web intelligence and deep resource analysis")
 st.markdown("---")
 
-# ==================== RESOURCE POPUP DISPLAY ====================
-if st.session_state.show_resource_popup:
-    resource_col = st.sidebar
-    with resource_col:
-        st.markdown("### ⚙️ Analyze for Your Resources")
-        
-        with st.form("resource_form_sidebar"):
-            memory_limit = st.text_input(
-                "Memory Limit (MB)",
-                value="512",
-                key="res_memory"
-            )
-            time_limit = st.text_input(
-                "Time Limit (seconds)",
-                value="10",
-                key="res_time"
-            )
-            input_size = st.text_input(
-                "Input Data Size",
-                value="10000 elements",
-                key="res_input"
-            )
-            python_version = st.text_input(
-                "Python Version",
-                value="3.10+",
-                key="res_python"
-            )
-            dependencies = st.text_area(
-                "Available Dependencies",
-                value="Standard library only",
-                height=80,
-                key="res_deps"
-            )
-            
-            if st.form_submit_button("🔍 Analyze", use_container_width=True):
-                if st.session_state.current_response and "code" in st.session_state.current_response:
-                    with st.spinner("🔍 Deep Analysis..."):
-                        analysis_ph = st.empty()
-                        
-                        analysis = stream_response(
-                            analysis_ph,
-                            "Perform DEEP resource-based analysis of this code:\n\n"
-                            "CONSTRAINTS:\n"
-                            "- Memory: {mem} MB\n"
-                            "- Time: {time} seconds\n"
-                            "- Input: {size}\n"
-                            "- Python: {py}\n"
-                            "- Dependencies: {deps}\n\n"
-                            "CODE:\n{code}\n\n"
-                            "ANALYZE THOROUGHLY:\n"
-                            "1. RUNTIME ERRORS: List all possible runtime errors specific to these constraints\n"
-                            "2. PERFORMANCE: How will this perform? Will it timeout?\n"
-                            "3. MEMORY: Will it exceed the memory limit? Where?\n"
-                            "4. EDGE CASES: What inputs will break this code?\n"
-                            "5. WARNINGS: Any dangerous patterns?\n"
-                            "6. SOLUTIONS: Specific fixes for each issue\n"
-                            "7. OPTIMIZATION: How to optimize for these constraints\n\n"
-                            "Be extremely detailed and technical.",
-                            {
-                                "mem": memory_limit,
-                                "time": time_limit,
-                                "size": input_size,
-                                "py": python_version,
-                                "deps": dependencies,
-                                "code": st.session_state.current_response["code"]
-                            }
-                        )
-                        
-                        st.session_state.resource_analysis = analysis
-                        st.success("✅ Analysis complete!")
-
-# ==================== 1. BUILD SECTION ====================
+# ==================== 1. BUILD SECTION (IMPROVED) ====================
 if section == "🏗️ Build":
-    st.subheader("🏗️ Build - Professional Code Generation")
-    st.markdown("Describe your requirement and get production-ready, deeply analyzed code")
+    st.subheader("🏗️ Build - Intelligent Code Generation")
+    st.markdown("Describe your requirement. I'll research best practices and generate production-ready code.")
 
     requirement = st.text_area(
         "📝 What do you want to build?",
-        placeholder="Example: Create a Python function to efficiently find all prime numbers up to N with comprehensive error handling and type hints",
+        placeholder="Example: Create an efficient Python function to find all prime numbers up to N with comprehensive error handling and type hints",
         height=120,
         key="build_input"
     )
+    
+    use_web_search = st.checkbox("🌐 Search web for latest best practices", value=True)
 
-    if st.button("🚀 Build Code", use_container_width=True, key="build_btn"):
+    if st.button("🚀 Generate Production Code", use_container_width=True, key="build_btn"):
         if requirement:
-            # SINGLE CODE GENERATION FLOW
-            with st.spinner("⏳ Analyzing requirement & building code..."):
+            with st.spinner("⏳ Analyzing requirement and building code..."):
                 
-                # PHASE 1: ANALYSIS
-                st.markdown('<div class="phase-header">📋 Phase 1: Requirement Analysis</div>', unsafe_allow_html=True)
-                analysis_ph = st.empty()
-                analysis = stream_response(
-                    analysis_ph,
-                    "Thoroughly analyze this requirement and identify:\n"
-                    "1. Core functionality needed\n"
-                    "2. Required technologies and libraries\n"
-                    "3. Constraints and edge cases\n"
-                    "4. Performance considerations\n"
-                    "5. Error handling needs\n"
-                    "6. Type hints needed\n\n"
-                    "Requirement: {req}",
-                    {"req": requirement}
-                )
-                
-                st.write("")
-
-                # PHASE 2: ARCHITECTURE
-                st.markdown('<div class="phase-header">🏛️ Phase 2: Architecture & Design</div>', unsafe_allow_html=True)
-                arch_ph = st.empty()
-                architecture = stream_response(
-                    arch_ph,
-                    "Design detailed architecture for:\n{req}\n\n"
-                    "Include:\n"
-                    "1. Overall structure\n"
-                    "2. Key components and classes\n"
-                    "3. Function signatures\n"
-                    "4. Data flow\n"
-                    "5. Error handling strategy",
-                    {"req": requirement}
-                )
-
-                st.write("")
-
-                # PHASE 3: CODE GENERATION (ONCE ONLY)
-                st.markdown('<div class="phase-header">⚙️ Phase 3: Production Code</div>', unsafe_allow_html=True)
+                # SINGLE SMART GENERATION with web research
+                st.markdown('<div class="phase-header">🔨 Building Production Code</div>', unsafe_allow_html=True)
                 code_ph = st.empty()
                 
-                generated_code = stream_response(
-                    code_ph,
-                    "Generate PRODUCTION-READY code for:\n{req}\n\n"
-                    "REQUIREMENTS:\n"
-                    "- Complete, ready-to-use code\n"
-                    "- Full type hints\n"
-                    "- Comprehensive docstrings\n"
-                    "- Error handling and validation\n"
-                    "- Edge case handling\n"
-                    "- Clear variable names\n"
-                    "- Comments on complex logic\n"
-                    "- Example usage\n"
-                    "- No placeholders or TODOs\n\n"
-                    "Return ONLY the complete, production-ready code.",
-                    {"req": requirement}
+                template = (
+                    "Build PRODUCTION-READY, EXCELLENT code for this requirement:\n"
+                    "{req}\n\n"
+                    "MUST INCLUDE:\n"
+                    "✓ Complete, ready-to-run implementation\n"
+                    "✓ Full type hints and annotations\n"
+                    "✓ Comprehensive docstrings (Google style)\n"
+                    "✓ Error handling and input validation\n"
+                    "✓ Edge case handling\n"
+                    "✓ Clear, descriptive variable names\n"
+                    "✓ Comments explaining complex logic\n"
+                    "✓ Example usage/test cases\n"
+                    "✓ Follow Python best practices\n"
+                    "✓ No placeholders, no TODOs, no incomplete code\n\n"
+                    "CODE QUALITY: Production-grade, tested, optimized\n"
+                    "Return ONLY the complete code."
                 )
-
-            # Store response ONCE
+                
+                generated_code = stream_response_with_web(
+                    code_ph,
+                    template,
+                    {"req": requirement},
+                    include_web_search=use_web_search,
+                    search_query=f"{requirement} Python best practices"
+                )
+            
+            # Store ONCE
             st.session_state.current_response = {
                 "code": generated_code,
                 "req": requirement,
-                "analysis": analysis,
-                "architecture": architecture,
                 "type": "build"
             }
             
             add_to_history("user", requirement, "🏗️ Build")
             add_to_history("assistant", generated_code, "🏗️ Build")
 
-            # Show generated code
+            # Display results
             st.markdown("---")
-            st.markdown("### ✨ Generated Code")
+            if use_web_search:
+                st.markdown('<div class="web-search-badge">🌐 Generated with web research</div>', unsafe_allow_html=True)
+            
+            st.markdown("### ✨ Production Code")
             st.code(generated_code, language="python")
 
-            # Buttons
+            # Action buttons
             col1, col2, col3 = st.columns(3)
             with col1:
                 if st.button("💾 Save Code", use_container_width=True):
                     filename = requirement[:25].replace(" ", "_")
                     path = save_code(filename, generated_code, "python")
-                    st.success(f"✅ Saved!")
+                    st.success(f"✅ Saved to {filename}")
             
             with col2:
-                if st.button("⚠️ Check Resources", use_container_width=True):
-                    st.session_state.show_resource_popup = True
-                    st.rerun()
+                if st.button("⚙️ Analyze Resources", use_container_width=True):
+                    st.session_state.show_modal = True
+                    st.session_state.modal_type = "resource"
             
             with col3:
-                if st.button("📋 Copy", use_container_width=True):
-                    st.info("Ready to copy!")
+                if st.button("📋 Copy Code", use_container_width=True):
+                    st.info("✅ Ready to copy!")
 
-            # Show resource popup if triggered
-            if st.session_state.show_resource_popup:
-                st.markdown("---")
-                st.markdown("### ⚙️ Analyze for Your Environment")
-                
-                with st.form("resource_form_main"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        memory = st.text_input("Memory (MB)", value="512")
-                        time_limit = st.text_input("Time Limit (sec)", value="10")
-                    with col2:
-                        input_size = st.text_input("Input Size", value="10000 elements")
-                        py_ver = st.text_input("Python Version", value="3.10+")
-                    
-                    dependencies = st.text_area("Dependencies Available", value="Standard library only", height=60)
-                    
-                    if st.form_submit_button("🔍 Predict Errors", use_container_width=True):
-                        error_ph = st.empty()
-                        
-                        error_analysis = stream_response(
-                            error_ph,
-                            "DEEP ERROR ANALYSIS for this code with these resources:\n\n"
-                            "ENVIRONMENT:\n"
-                            "Memory: {mem}MB | Time: {time}s | Input: {size}\n"
-                            "Python: {py} | Dependencies: {deps}\n\n"
-                            "CODE:\n{code}\n\n"
-                            "ANALYZE DEEPLY:\n"
-                            "1. RUNTIME ERRORS: All possible errors for these constraints\n"
-                            "2. PERFORMANCE: Speed analysis, bottlenecks\n"
-                            "3. MEMORY: Will it fit? Where are the leaks?\n"
-                            "4. EDGE CASES: What inputs break it?\n"
-                            "5. COMPATIBILITY: Python version issues?\n"
-                            "6. DEPENDENCY ISSUES: What dependencies are missing?\n"
-                            "7. SOLUTIONS: Specific fixes for each problem\n"
-                            "8. RECOMMENDATIONS: Best practices for your environment\n\n"
-                            "Be thorough and specific. Provide line numbers if applicable.",
-                            {
-                                "mem": memory,
-                                "time": time_limit,
-                                "size": input_size,
-                                "py": py_ver,
-                                "deps": dependencies,
-                                "code": generated_code
-                            }
-                        )
-                        
-                        st.success("✅ Deep analysis complete!")
+            # Show modal if triggered
+            if st.session_state.show_modal and st.session_state.modal_type == "resource":
+                show_resource_modal(generated_code)
+                st.session_state.show_modal = False
 
-            # Follow-ups
+            # Follow-up questions
             st.markdown("---")
             st.markdown('<div class="followup-box">', unsafe_allow_html=True)
             st.markdown("### 🔄 Ask Follow-up Questions")
             
             followup = st.text_input(
                 "Ask anything about the code...",
-                placeholder="e.g., How can I optimize this? What if I need to handle X?",
+                placeholder="e.g., How can I optimize this? What edge cases should I handle?",
                 key="build_followup"
             )
             
             if followup:
                 followup_ph = st.empty()
-                response = stream_response(
+                response = stream_response_with_web(
                     followup_ph,
-                    "Answer this follow-up question about the code:\n\n"
-                    "Code:\n{code}\n\n"
-                    "Question: {q}\n\n"
-                    "Provide detailed, practical answer with code examples if needed.",
-                    {"code": generated_code, "q": followup}
+                    "Answer this follow-up about the code:\n\nCode:\n{code}\n\nQuestion: {q}\n\nProvide detailed, practical answer with code examples.",
+                    {"code": generated_code, "q": followup},
+                    include_web_search=use_web_search,
+                    search_query=f"{followup} Python"
                 )
                 add_to_history("user", followup, "🏗️ Build")
                 add_to_history("assistant", response, "🏗️ Build")
@@ -665,72 +728,44 @@ if section == "🏗️ Build":
             st.markdown('</div>', unsafe_allow_html=True)
             show_disclaimer()
         else:
-            st.warning("Please describe what you want to build!")
+            st.warning("❌ Please describe what you want to build!")
 
 # ==================== 2. DEBUG SECTION ====================
 elif section == "🐛 Debug":
-    st.subheader("🐛 Debug - Deep Code Analysis")
-    st.markdown("Paste broken code and I'll analyze deeply to find and fix all issues")
+    st.subheader("🐛 Debug - Deep Issue Analysis")
+    st.markdown("Paste broken code and I'll find and fix all issues")
 
     code_to_fix = st.text_area(
-        "📝 Your broken code (with error message):",
-        placeholder="Paste your code with error message in comments...",
+        "📝 Your broken code (with error if available):",
+        placeholder="Paste your broken code here...",
         height=150,
         key="debug_code"
     )
 
-    if st.button("🔧 Deep Analysis & Fix", use_container_width=True, key="debug_btn"):
+    if st.button("🔧 Analyze & Fix", use_container_width=True, key="debug_btn"):
         if code_to_fix:
-            with st.spinner("🔍 Analyzing deeply..."):
+            with st.spinner("🔍 Deep analysis..."):
                 
                 # Analysis
-                st.markdown('<div class="phase-header">🔍 Phase 1: Deep Issue Analysis</div>', unsafe_allow_html=True)
+                st.markdown('<div class="phase-header">🔍 Issue Analysis</div>', unsafe_allow_html=True)
                 analysis_ph = st.empty()
-                analysis = stream_response(
+                analysis = stream_response_with_web(
                     analysis_ph,
-                    "Perform DEEP analysis of this broken code:\n"
-                    "1. Identify ALL errors\n"
-                    "2. Root causes\n"
-                    "3. Why they occur\n"
-                    "4. Impact severity\n"
-                    "5. Related issues\n\n"
-                    "Code:\n{code}",
-                    {"code": code_to_fix}
+                    "DEEP analysis of broken code:\n1. All errors\n2. Root causes\n3. Why they occur\n4. Severity\n5. Related issues\n\nCode:\n{code}",
+                    {"code": code_to_fix},
+                    include_web_search=True,
+                    search_query="Python debugging common errors"
                 )
 
                 st.write("")
 
                 # Fix
-                st.markdown('<div class="phase-header">✅ Phase 2: Fixed Code</div>', unsafe_allow_html=True)
+                st.markdown('<div class="phase-header">✅ Fixed Code</div>', unsafe_allow_html=True)
                 fix_ph = st.empty()
-                fixed_code = stream_response(
+                fixed_code = stream_response_with_web(
                     fix_ph,
-                    "Provide the completely fixed, production-ready code:\n"
-                    "- Fix all errors\n"
-                    "- Add error handling\n"
-                    "- Add type hints\n"
-                    "- Add docstrings\n"
-                    "- Add edge case handling\n"
-                    "- Return ONLY the code\n\n"
-                    "Original:\n{code}",
+                    "Provide completely fixed, production-ready code:\n- Fix all errors\n- Add error handling\n- Add type hints\n- Add docstrings\n- Handle edge cases\n- Return ONLY code\n\nOriginal:\n{code}",
                     {"code": code_to_fix}
-                )
-
-                st.write("")
-
-                # Explanation
-                st.markdown('<div class="phase-header">📝 Phase 3: Detailed Explanation</div>', unsafe_allow_html=True)
-                explain_ph = st.empty()
-                explanation = stream_response(
-                    explain_ph,
-                    "Explain in detail:\n"
-                    "1. What errors were present\n"
-                    "2. Why they were bugs\n"
-                    "3. How each fix addresses it\n"
-                    "4. Best practices shown\n"
-                    "5. How to avoid similar issues\n\n"
-                    "Original:\n{orig}\n\nFixed:\n{fixed}",
-                    {"orig": code_to_fix, "fixed": fixed_code}
                 )
 
             st.session_state.current_response = {
@@ -749,15 +784,15 @@ elif section == "🐛 Debug":
                 st.success("✅ Saved!")
 
             st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            followup = st.text_input("Ask follow-up...", key="debug_followup")
+            followup = st.text_input("Ask about the fix...", key="debug_followup")
             if followup:
                 followup_ph = st.empty()
-                stream_response(followup_ph, "Code: {code}\n\nQ: {q}", {"code": fixed_code, "q": followup})
+                stream_response_with_web(followup_ph, "Code:\n{code}\n\nQ: {q}", {"code": fixed_code, "q": followup})
                 add_to_history("user", followup, "🐛 Debug")
             st.markdown('</div>', unsafe_allow_html=True)
             show_disclaimer()
         else:
-            st.warning("Paste code!")
+            st.warning("❌ Paste code to debug!")
 
 # ==================== 3. TEST SECTION ====================
 elif section == "✅ Test":
@@ -773,29 +808,25 @@ elif section == "✅ Test":
 
     if st.button("🧪 Generate Tests", use_container_width=True, key="test_btn"):
         if code:
-            with st.spinner("🧪 Generating comprehensive tests..."):
+            with st.spinner("🧪 Generating tests..."):
                 
-                st.markdown('<div class="phase-header">📋 Phase 1: Test Planning</div>', unsafe_allow_html=True)
+                st.markdown('<div class="phase-header">📋 Test Plan</div>', unsafe_allow_html=True)
                 plan_ph = st.empty()
-                test_plan = stream_response(
+                test_plan = stream_response_with_web(
                     plan_ph,
-                    "Plan comprehensive test cases:\n{code}",
-                    {"code": code}
+                    "Plan comprehensive tests:\n{code}",
+                    {"code": code},
+                    include_web_search=True,
+                    search_query="Python pytest best practices"
                 )
 
                 st.write("")
 
-                st.markdown('<div class="phase-header">⚙️ Phase 2: Test Code</div>', unsafe_allow_html=True)
+                st.markdown('<div class="phase-header">⚙️ Test Code</div>', unsafe_allow_html=True)
                 test_ph = st.empty()
-                test_code = stream_response(
+                test_code = stream_response_with_web(
                     test_ph,
-                    "Generate production-ready tests:\n"
-                    "- Unit tests\n"
-                    "- Edge cases\n"
-                    "- Error scenarios\n"
-                    "- Performance tests\n"
-                    "- Integration tests\n\n"
-                    "Code:\n{code}",
+                    "Generate production-ready tests:\n- Unit tests\n- Edge cases\n- Error scenarios\n- Integration tests\n\nCode:\n{code}",
                     {"code": code}
                 )
 
@@ -814,11 +845,11 @@ elif section == "✅ Test":
             followup = st.text_input("Follow-up...", key="test_followup")
             if followup:
                 followup_ph = st.empty()
-                stream_response(followup_ph, "Tests:\n{code}\n\nQ: {q}", {"code": test_code, "q": followup})
+                stream_response_with_web(followup_ph, "Tests:\n{code}\n\nQ: {q}", {"code": test_code, "q": followup})
             st.markdown('</div>', unsafe_allow_html=True)
             show_disclaimer()
         else:
-            st.warning("Paste code!")
+            st.warning("❌ Paste code!")
 
 # ==================== 4. OPTIMIZE SECTION ====================
 elif section == "⚡ Optimize":
@@ -833,28 +864,25 @@ elif section == "⚡ Optimize":
 
     if st.button("⚡ Optimize", use_container_width=True, key="opt_btn"):
         if code:
-            with st.spinner("🚀 Deep optimization analysis..."):
+            with st.spinner("🚀 Deep optimization..."):
                 
-                st.markdown('<div class="phase-header">📊 Phase 1: Performance Analysis</div>', unsafe_allow_html=True)
+                st.markdown('<div class="phase-header">📊 Performance Analysis</div>', unsafe_allow_html=True)
                 analysis_ph = st.empty()
-                analysis = stream_response(
+                analysis = stream_response_with_web(
                     analysis_ph,
                     "Detailed optimization analysis:\n{code}",
-                    {"code": code}
+                    {"code": code},
+                    include_web_search=True,
+                    search_query="Python performance optimization algorithms"
                 )
 
                 st.write("")
 
-                st.markdown('<div class="phase-header">⚙️ Phase 2: Optimized Code</div>', unsafe_allow_html=True)
+                st.markdown('<div class="phase-header">⚙️ Optimized Code</div>', unsafe_allow_html=True)
                 opt_ph = st.empty()
-                optimized_code = stream_response(
+                optimized_code = stream_response_with_web(
                     opt_ph,
-                    "Optimize for performance, memory, readability:\n"
-                    "- Remove bottlenecks\n"
-                    "- Improve algorithms\n"
-                    "- Better memory usage\n"
-                    "- Pythonic code\n\n"
-                    "Code:\n{code}",
+                    "Optimize for performance and memory:\n- Remove bottlenecks\n- Better algorithms\n- Memory efficiency\n- Pythonic patterns\n\nCode:\n{code}",
                     {"code": code}
                 )
 
@@ -873,109 +901,145 @@ elif section == "⚡ Optimize":
             followup = st.text_input("Follow-up...", key="opt_followup")
             if followup:
                 followup_ph = st.empty()
-                stream_response(followup_ph, "Optimized:\n{code}\n\nQ: {q}", {"code": optimized_code, "q": followup})
+                stream_response_with_web(followup_ph, "Optimized:\n{code}\n\nQ: {q}", {"code": optimized_code, "q": followup})
             st.markdown('</div>', unsafe_allow_html=True)
             show_disclaimer()
         else:
-            st.warning("Paste code!")
+            st.warning("❌ Paste code!")
 
-# ==================== 5. EXPLAIN SECTION ====================
+# ==================== 5. EXPLAIN SECTION (IMPROVED) ====================
 elif section == "📚 Explain":
     st.subheader("📚 Explain - Deep Learning Content")
+    st.markdown("Learn concepts with detailed explanations and real-world examples")
 
     topic = st.text_area(
         "📝 What to explain?",
-        placeholder="e.g., How does recursion work?",
+        placeholder="e.g., How does recursion work? Explain async/await in Python",
         height=120,
         key="explain_input"
     )
+    
+    use_web_search = st.checkbox("🌐 Include latest information and examples", value=True)
 
     if st.button("📖 Explain", use_container_width=True, key="explain_btn"):
         if topic:
             with st.spinner("📚 Creating detailed explanation..."):
                 
+                # SINGLE comprehensive explanation with web search
                 st.markdown('<div class="phase-header">🎓 Comprehensive Explanation</div>', unsafe_allow_html=True)
                 explain_ph = st.empty()
-                explanation = stream_response(
+                explanation = stream_response_with_web(
                     explain_ph,
-                    "Explain thoroughly with multiple examples:\n{topic}",
-                    {"topic": topic}
+                    "Provide COMPREHENSIVE explanation:\n\n{topic}\n\n"
+                    "Include:\n"
+                    "1. Core concept explanation\n"
+                    "2. Multiple detailed examples\n"
+                    "3. Real-world use cases\n"
+                    "4. Visual analogies\n"
+                    "5. Common misconceptions\n"
+                    "6. Step-by-step walkthrough\n"
+                    "7. Pro tips and best practices\n"
+                    "8. Performance considerations\n"
+                    "9. Common pitfalls to avoid\n"
+                    "10. Resources for deeper learning\n\n"
+                    "Be thorough, clear, and engaging.",
+                    {"topic": topic},
+                    include_web_search=use_web_search,
+                    search_query=f"{topic} tutorial best practices"
                 )
 
-                st.write("")
-
-                st.markdown('<div class="phase-header">⚠️ Common Mistakes</div>', unsafe_allow_html=True)
-                mistakes_ph = st.empty()
-                mistakes = stream_response(
-                    mistakes_ph,
-                    "5 common mistakes about: {topic}",
-                    {"topic": topic}
-                )
-
-                st.write("")
-
-                st.markdown('<div class="phase-header">💡 Pro Tips & Best Practices</div>', unsafe_allow_html=True)
-                tips_ph = st.empty()
-                tips = stream_response(
-                    tips_ph,
-                    "5 advanced tips for: {topic}",
-                    {"topic": topic}
-                )
-
-            st.session_state.current_response = {"explanation": explanation, "mistakes": mistakes, "tips": tips, "topic": topic, "type": "explain"}
+            st.session_state.current_response = {
+                "explanation": explanation,
+                "topic": topic,
+                "type": "explain"
+            }
             add_to_history("user", f"Explain: {topic[:50]}...", "📚 Explain")
             add_to_history("assistant", explanation, "📚 Explain")
 
+            st.markdown("---")
+            if use_web_search:
+                st.markdown('<div class="web-search-badge">🌐 Includes latest information</div>', unsafe_allow_html=True)
+
             st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            followup = st.text_input("Follow-up...", key="explain_followup")
+            st.markdown("### 🔄 Ask Follow-up Questions")
+            followup = st.text_input(
+                "Ask anything about this topic...",
+                placeholder="e.g., Can you give another example? How is this related to...?",
+                key="explain_followup"
+            )
             if followup:
                 followup_ph = st.empty()
-                stream_response(followup_ph, "About: {topic}\n\nQ: {q}", {"topic": topic, "q": followup})
+                response = stream_response_with_web(
+                    followup_ph,
+                    "About: {topic}\n\nQuestion: {q}\n\nProvide detailed answer with examples.",
+                    {"topic": topic, "q": followup},
+                    include_web_search=use_web_search,
+                    search_query=f"{topic} {followup}"
+                )
+                add_to_history("user", followup, "📚 Explain")
+                add_to_history("assistant", response, "📚 Explain")
             st.markdown('</div>', unsafe_allow_html=True)
             show_disclaimer()
         else:
-            st.warning("Ask something!")
+            st.warning("❌ Ask something to explain!")
 
 # ==================== 6. SEARCH SECTION ====================
 elif section == "🔍 Search":
     st.subheader("🔍 Search - Deep How-To Solutions")
+    st.markdown("Find comprehensive solutions with code examples")
 
     problem = st.text_area(
         "❓ How to...",
-        placeholder="e.g., How to handle large files efficiently?",
+        placeholder="e.g., How to handle large files efficiently? How to implement caching?",
         height=120,
         key="search_input"
     )
 
-    if st.button("🔎 Search", use_container_width=True, key="search_btn"):
+    if st.button("🔎 Find Solution", use_container_width=True, key="search_btn"):
         if problem:
-            with st.spinner("🔍 Finding deep solution..."):
+            with st.spinner("🔍 Finding solution..."):
                 
                 st.markdown('<div class="phase-header">📋 Complete Solution</div>', unsafe_allow_html=True)
                 solution_ph = st.empty()
-                solution = stream_response(
+                solution = stream_response_with_web(
                     solution_ph,
-                    "Detailed solution with code examples:\n{prob}",
-                    {"prob": problem}
+                    "Provide complete solution:\n\n{prob}\n\n"
+                    "Include:\n"
+                    "1. Problem explanation\n"
+                    "2. Multiple solution approaches\n"
+                    "3. Pros and cons of each\n"
+                    "4. Complete code examples\n"
+                    "5. Performance characteristics\n"
+                    "6. When to use each approach\n"
+                    "7. Common mistakes to avoid\n"
+                    "8. Testing strategies\n\n"
+                    "Be thorough and practical.",
+                    {"prob": problem},
+                    include_web_search=True,
+                    search_query=f"{problem} Python implementation"
                 )
 
             st.session_state.current_response = {"solution": solution, "problem": problem, "type": "search"}
             add_to_history("user", f"How to: {problem}", "🔍 Search")
             add_to_history("assistant", solution, "🔍 Search")
 
+            st.markdown("---")
+            st.markdown('<div class="web-search-badge">🌐 Web-enhanced solution</div>', unsafe_allow_html=True)
+
             st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            followup = st.text_input("Follow-up...", key="search_followup")
+            followup = st.text_input("Follow-up question...", key="search_followup")
             if followup:
                 followup_ph = st.empty()
-                stream_response(followup_ph, "About: {prob}\n\nQ: {q}", {"prob": problem, "q": followup})
+                stream_response_with_web(followup_ph, "About: {prob}\n\nQ: {q}", {"prob": problem, "q": followup})
             st.markdown('</div>', unsafe_allow_html=True)
             show_disclaimer()
         else:
-            st.warning("Ask something!")
+            st.warning("❌ Ask something!")
 
 # ==================== 7. ASK SECTION ====================
 else:
     st.subheader("💬 Ask Anything About Coding")
+    st.markdown("Get comprehensive answers with examples and best practices")
 
     question = st.text_area(
         "❓ Your question:",
@@ -986,35 +1050,50 @@ else:
 
     if st.button("🤔 Ask", use_container_width=True, key="general_btn"):
         if question:
-            with st.spinner("🤔 Thinking deeply..."):
+            with st.spinner("🤔 Thinking..."):
                 
                 st.markdown('<div class="phase-header">💡 Answer</div>', unsafe_allow_html=True)
                 answer_ph = st.empty()
-                answer = stream_response(
+                answer = stream_response_with_web(
                     answer_ph,
-                    "Answer comprehensively with examples:\n{q}",
-                    {"q": question}
+                    "Answer comprehensively:\n\n{q}\n\n"
+                    "Include:\n"
+                    "1. Direct answer\n"
+                    "2. Detailed explanation\n"
+                    "3. Code examples\n"
+                    "4. Use cases\n"
+                    "5. Best practices\n"
+                    "6. Common mistakes\n"
+                    "7. Further resources\n\n"
+                    "Be thorough and clear.",
+                    {"q": question},
+                    include_web_search=True,
+                    search_query=question
                 )
 
             st.session_state.current_response = {"answer": answer, "question": question, "type": "general"}
             add_to_history("user", question, "💬 Ask")
             add_to_history("assistant", answer, "💬 Ask")
 
+            st.markdown("---")
+            st.markdown('<div class="web-search-badge">🌐 Web-informed answer</div>', unsafe_allow_html=True)
+
             st.markdown('<div class="followup-box">', unsafe_allow_html=True)
             followup = st.text_input("Follow-up...", key="general_followup")
             if followup:
                 followup_ph = st.empty()
-                stream_response(followup_ph, "Q: {q}\n\nFollow-up: {follow}", {"q": question, "follow": followup})
+                stream_response_with_web(followup_ph, "Q: {q}\n\nFollow-up: {follow}", {"q": question, "follow": followup})
             st.markdown('</div>', unsafe_allow_html=True)
             show_disclaimer()
         else:
-            st.warning("Ask something!")
+            st.warning("❌ Ask something!")
 
 # ==================== FOOTER ====================
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 20px 0;'>
-    <p>🎓 Professional Code Generation • Deep Analysis • Streaming Responses</p>
-    <p style='font-size: 12px; margin-top: 10px;'>✨ Powered by Groq + LLaMA 3.3 70B</p>
+    <p>⚡ Production-Grade Code Generation • AI-Powered Web Search • Deep Resource Analysis</p>
+    <p style='font-size: 12px; margin-top: 10px;'>✨ Powered by Groq + LLaMA 3.3 70B + Tavily Search API</p>
+    <p style='font-size: 11px; color: #999; margin-top: 6px;'>🔗 <a href='https://tavily.com' target='_blank'>Tavily API</a> • Real-time web intelligence for AI</p>
 </div>
 """, unsafe_allow_html=True)
