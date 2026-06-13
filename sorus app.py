@@ -118,7 +118,7 @@ if not API_KEY:
     st.stop()
 
 llm = ChatGroq(
-    model="llama-3.1-70b-versatile",
+    model="llama-3.1-8b-instant",
     temperature=0.3,
     api_key=API_KEY
 )
