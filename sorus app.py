@@ -8,8 +8,8 @@ import time
 
 # ==================== PAGE CONFIG ====================
 st.set_page_config(
-    page_title="🚀 Coding Education Agent",
-    page_icon="🤖",
+    page_title="Sorus Ai",
+    page_icon="֎",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -562,8 +562,8 @@ with st.sidebar:
         st.rerun()
 
 # ==================== MAIN CONTENT ====================
-st.title("🚀 Intelligent Coding Education Agent")
-st.markdown("Learn to code with AI-powered assistance • Generate • Debug • Test • Optimize • Learn")
+st.title(" Intelligent Coding  Agent")
+st.markdown("Sorus is an Ai and can make mistakes.Please double check Responses or verify information from trusted sources")
 
 
 
