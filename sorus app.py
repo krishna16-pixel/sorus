@@ -541,8 +541,9 @@ def show_resource_modal(code):
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== SIDEBAR ====================
-st.sidebar.title("⚡ Sorus AI Pro")
-st.sidebar.markdown("*Advanced Code Generation & Analysis*")
+st.sidebar.title("Sorus AI ")
+st.sidebar.markdown("This coding agent is an AI-powered tool that generates and assists with writing, modifying, and analyzing code. All outputs are automatically generated and may contain errors, security vulnerabilities, incomplete logic, or outdated practices, and should not be treated as verified or production-ready. Users are solely responsible for reviewing, testing, and validating all generated code before use, including checking for correctness, performance, security risks, dependency safety, and licensing compliance. The agent does not intentionally store, retain, or share user data, but users should avoid submitting sensitive information such as passwords, API keys, or confidential data. By using this agent, you acknowledge that all outputs are provided “as is” without warranties of any kind, and the maintainers are not liable for any damages, losses, or issues arising from its use or misuse.
+")
 st.sidebar.markdown("---")
 
 sections = [
@@ -607,7 +608,8 @@ else:
     st.sidebar.markdown("*No files generated yet*")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Made with ⚡ for Excellence**")
+st.sidebar.markdown("This coding agent is an AI-powered assistant designed to help with writing, debugging, and improving code across different programming languages. It can generate code snippets, suggest fixes, and explain programming concepts to support faster and more efficient development. The agent is intended to assist developers, not replace them, and works best when its outputs are reviewed and validated before use in real projects.
+")
 
 # ==================== MAIN TITLE ====================
 st.title("⚡ Sorus AI ")
