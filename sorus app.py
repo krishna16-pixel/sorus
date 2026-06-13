@@ -1,151 +1,51 @@
 import os
-import sys
-from pathlib import Path
 import streamlit as st
+from pathlib import Path
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
-import time
 
 # ==================== PAGE CONFIG ====================
 st.set_page_config(
-    page_title="Sorus Ai",
-    page_icon="֎",
+    page_title="🚀 Coding Education Agent",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ==================== CUSTOM CSS ====================
+# ==================== CSS ====================
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;700&display=swap');
-    
-    * {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Smooth transitions */
-    .stMarkdown, .stCode, .stButton {
-        animation: fadeIn 0.3s ease-in;
-    }
-    
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* Sidebar styling */
-    .css-1d391kg {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
+    .stMarkdown { animation: fadeIn 0.3s ease-in; }
     
-    /* Main container */
-    .main {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
-    
-    /* Code blocks */
-    .stCode {
-        background-color: #1e1e1e;
-        border-radius: 10px;
-        padding: 15px;
-        font-family: 'Fira Code', monospace;
-    }
-    
-    /* Chat messages */
-    .chat-message {
-        padding: 12px 16px;
-        border-radius: 10px;
-        margin: 10px 0;
-        animation: slideIn 0.3s ease-out;
-    }
-    
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateX(-20px); }
-        to { opacity: 1; transform: translateX(0); }
-    }
-    
-    .user-message {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 15px;
-        padding: 12px 16px;
-        margin-left: auto;
-        max-width: 70%;
-        word-wrap: break-word;
-    }
-    
-    .assistant-message {
-        background: white;
-        color: #333;
-        border-radius: 15px;
-        padding: 12px 16px;
-        margin-right: auto;
-        max-width: 70%;
-        border-left: 4px solid #667eea;
-    }
-    
-    /* Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 600;
-        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 10px 20px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        transform: translateY(-2px) !important;
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4) !important;
     }
     
-    /* Error/Warning boxes */
-    .error-box {
-        background: #fee;
-        border-left: 4px solid #f44;
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin: 10px 0;
+    .stTextArea textarea {
+        border-radius: 8px !important;
+        border: 2px solid #667eea !important;
     }
     
-    .success-box {
-        background: #efe;
-        border-left: 4px solid #4f4;
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin: 10px 0;
-    }
-    
-    .warning-box {
-        background: #ffe;
-        border-left: 4px solid #fa0;
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin: 10px 0;
-    }
-    
-    /* Expandable sections */
-    .streamlit-expanderHeader {
-        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-        border-radius: 8px;
-    }
-    
-    /* Input styling */
-    .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea {
-        border-radius: 8px;
-        border: 2px solid #667eea;
-        background-color: white;
-    }
-    
-    /* Metrics */
-    .metric-card {
-        background: white;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        text-align: center;
+    .stTextInput input {
+        border-radius: 8px !important;
+        border: 2px solid #667eea !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -154,7 +54,7 @@ st.markdown("""
 API_KEY = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
 
 if not API_KEY:
-    st.error("❌ Please set your GOOGLE_API_KEY in .streamlit/secrets.toml or environment variables")
+    st.error("❌ Please set GOOGLE_API_KEY in .streamlit/secrets.toml")
     st.stop()
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, api_key=API_KEY)
@@ -166,8 +66,10 @@ if "chat_history" not in st.session_state:
 if "generated_files" not in st.session_state:
     st.session_state.generated_files = []
 
-# ==================== SAVE CODE ====================
+# ==================== HELPER FUNCTIONS ====================
+
 def save_code(filename, code, language):
+    """Save generated code to file"""
     ext = {"python": "py", "javascript": "js", "java": "java", "cpp": "cpp"}.get(language, "txt")
     path = f"generated_code/{filename}.{ext}"
     with open(path, "w") as f:
@@ -175,395 +77,424 @@ def save_code(filename, code, language):
     st.session_state.generated_files.append({"name": filename, "path": path, "code": code})
     return path
 
-# ==================== DETECT INTENT ====================
-def detect_intent(text):
-    text = text.lower()
-    
-    if any(w in text for w in ["build", "create", "generate", "write", "make"]):
-        return "build"
-    elif any(w in text for w in ["debug", "fix", "error", "wrong"]):
-        return "debug"
-    elif any(w in text for w in ["test", "testing"]):
-        return "test"
-    elif any(w in text for w in ["improve", "optimize", "better", "faster"]):
-        return "optimize"
-    elif any(w in text for w in ["explain", "understand", "teach", "learn", "what is"]):
-        return "explain"
-    elif any(w in text for w in ["how", "find", "search", "help", "solution"]):
-        return "search"
-    else:
-        return "general"
-
-# ==================== STREAMING CHAIN FUNCTION ====================
-def run_chain_stream(template, variables):
-    """Run chain with streaming response"""
-    prompt = PromptTemplate(template=template, input_variables=list(variables.keys()))
-    chain = prompt | llm
-    
-    # Use streaming with Gemini
-    response = ""
-    with st.spinner("🔄 Generating response..."):
-        for chunk in chain.stream(variables):
-            if hasattr(chunk, 'content'):
-                response += chunk.content
-            else:
-                response += str(chunk)
-            yield response
-
 def run_chain(template, variables):
-    """Run chain normally without streaming (for backend processing)"""
+    """Run LLM chain without streaming"""
     prompt = PromptTemplate(template=template, input_variables=list(variables.keys()))
     chain = prompt | llm
     response = chain.invoke(variables)
     return response.content if hasattr(response, 'content') else str(response)
 
-# ==================== HANDLERS ====================
+def stream_response(placeholder, template, variables):
+    """Stream response character by character like ChatGPT"""
+    prompt = PromptTemplate(template=template, input_variables=list(variables.keys()))
+    chain = prompt | llm
+    full_response = ""
+    
+    try:
+        for chunk in chain.stream(variables):
+            if hasattr(chunk, 'content'):
+                full_response += chunk.content
+            else:
+                full_response += str(chunk)
+            placeholder.markdown(full_response + "▌")
+        
+        placeholder.markdown(full_response)
+    except Exception as e:
+        # Fallback
+        response = chain.invoke(variables)
+        full_response = response.content if hasattr(response, 'content') else str(response)
+        placeholder.markdown(full_response)
+    
+    return full_response
 
-def handle_build(user_input):
-    st.subheader("🏗️ Build - Code Generation")
-    
-    # Ask for requirements first
-    with st.form("build_form"):
-        req = st.text_area(
-            "📝 What do you want to build?",
-            value=user_input.replace("build", "").replace("create", "").replace("generate", "").strip(),
-            height=100,
-            placeholder="e.g., Create a Python function to calculate fibonacci numbers"
-        )
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            language = st.selectbox("Programming Language", ["python", "javascript", "java", "cpp", "c"])
-        with col2:
-            memory = st.text_input("Memory Limit", "512MB")
-        with col3:
-            time_limit = st.text_input("Time Limit", "30s")
-        
-        dependencies = st.text_input("Dependencies (comma-separated)", "")
-        
-        submitted = st.form_submit_button("🚀 Generate Code", use_container_width=True)
-    
-    if submitted and req:
-        st.session_state.chat_history.append(("user", req))
-        
-        # Generate code
-        st.info("⚙️ Generating code...")
-        code_placeholder = st.empty()
-        full_response = ""
-        
-        for partial_response in run_chain_stream("Create working {lang} code for: {req}\n\nReturn ONLY code without explanations.", 
-                                                 {"lang": language, "req": req}):
-            full_response = partial_response
-            code_placeholder.code(full_response, language=language)
-        
-        st.session_state.chat_history.append(("assistant", full_response))
-        
-        # Save code
-        if st.button("💾 Save Code"):
-            filename = req[:30].replace(" ", "_")
-            path = save_code(filename, full_response, language)
-            st.success(f"✅ Code saved to: `{path}`")
-        
-        # Show possible outcomes and errors
-        st.markdown("---")
-        st.subheader("📊 Possible Outcomes & Error Analysis")
-        
-        outcomes_placeholder = st.empty()
-        outcomes_text = ""
-        
-        for chunk in run_chain_stream(
-            "For this {lang} code:\n{code}\n\nWith resources: Memory={mem}, Time={time}, Dependencies={dep}\n\nList:\n1. Possible outputs\n2. Possible errors\n3. Edge cases",
-            {"lang": language, "code": full_response, "mem": memory, "time": time_limit, "dep": dependencies or "None"}
-        ):
-            outcomes_text = chunk
-            outcomes_placeholder.markdown(outcomes_text)
-        
-        st.markdown("---")
-        st.subheader("💡 5-Year-Old Explanation")
-        
-        explanation_placeholder = st.empty()
-        explanation_text = ""
-        
-        for chunk in run_chain_stream(
-            "Explain this {lang} code like you're talking to a 5-year-old child. Use very simple words and real-world examples:\n\n{code}",
-            {"lang": language, "code": full_response}
-        ):
-            explanation_text = chunk
-            explanation_placeholder.markdown(explanation_text)
-
-def handle_explain(user_input):
-    st.subheader("📚 Explain - Learn Concepts")
-    
-    with st.form("explain_form"):
-        topic = st.text_input(
-            "What do you want to understand?",
-            value=user_input.replace("explain", "").replace("understand", "").strip(),
-            placeholder="e.g., recursion, loops, functions, decorators"
-        )
-        submitted = st.form_submit_button("📖 Explain", use_container_width=True)
-    
-    if submitted and topic:
-        st.session_state.chat_history.append(("user", f"Explain: {topic}"))
-        
-        # Explanation
-        st.markdown("### 🎓 Explanation (For Beginners)")
-        explanation_placeholder = st.empty()
-        explanation = ""
-        
-        for chunk in run_chain_stream(
-            "Explain '{topic}' for complete beginners learning to code. Use simple words, real-world examples, and maybe an analogy. Include a simple code example.",
-            {"topic": topic}
-        ):
-            explanation = chunk
-            explanation_placeholder.markdown(explanation)
-        
-        st.session_state.chat_history.append(("assistant", explanation))
-        
-        st.markdown("---")
-        
-        # Common Mistakes
-        st.markdown("### ⚠️ Common Mistakes Beginners Make")
-        mistakes_placeholder = st.empty()
-        mistakes = ""
-        
-        for chunk in run_chain_stream(
-            "List 3-5 common mistakes beginners make with '{topic}' and how to avoid them. Be brief and clear.",
-            {"topic": topic}
-        ):
-            mistakes = chunk
-            mistakes_placeholder.markdown(mistakes)
-        
-        # Tips
-        st.markdown("---")
-        st.markdown("### 💡 Pro Tips")
-        tips_placeholder = st.empty()
-        tips = ""
-        
-        for chunk in run_chain_stream(
-            "Give 3 pro tips for mastering '{topic}'. Keep it concise.",
-            {"topic": topic}
-        ):
-            tips = chunk
-            tips_placeholder.markdown(tips)
-
-def handle_debug(user_input):
-    st.subheader("🐛 Debug - Fix Your Code")
-    
-    with st.form("debug_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            language = st.selectbox("Programming Language", ["python", "javascript", "java", "cpp", "c"], key="debug_lang")
-        with col2:
-            pass
-        
-        code = st.text_area("📝 Paste your code:", height=150, placeholder="def my_function():\n pass")
-        error = st.text_area("❌ Paste the error message:", height=100, placeholder="Traceback or error output")
-        
-        submitted = st.form_submit_button("🔧 Fix Code", use_container_width=True)
-    
-    if submitted and code and error:
-        st.session_state.chat_history.append(("user", f"Debug: {code[:100]}..."))
-        
-        st.markdown("### ✅ Fixed Code")
-        fixed_placeholder = st.empty()
-        fixed = ""
-        
-        for chunk in run_chain_stream(
-            "Fix this {lang} code that has an error:\n\nCode:\n{code}\n\nError:\n{err}\n\nShow ONLY the corrected code without explanation.",
-            {"lang": language, "code": code, "err": error}
-        ):
-            fixed = chunk
-            fixed_placeholder.code(fixed, language=language)
-        
-        st.session_state.chat_history.append(("assistant", fixed))
-        
-        st.markdown("---")
-        st.markdown("### 📝 Explanation of the Fix")
-        explanation_placeholder = st.empty()
-        explanation = ""
-        
-        for chunk in run_chain_stream(
-            "Briefly explain what was wrong and how the fix solves it. Keep it simple.",
-            {"code": fixed, "err": error}
-        ):
-            explanation = chunk
-            explanation_placeholder.markdown(explanation)
-
-def handle_test(user_input):
-    st.subheader("✅ Test - Generate Test Cases")
-    
-    with st.form("test_form"):
-        language = st.selectbox("Programming Language", ["python", "javascript", "java", "cpp", "c"], key="test_lang")
-        code = st.text_area("📝 Paste your code:", height=150, placeholder="def add(a, b):\n return a + b")
-        
-        submitted = st.form_submit_button("🧪 Generate Tests", use_container_width=True)
-    
-    if submitted and code:
-        st.session_state.chat_history.append(("user", f"Test: {code[:100]}..."))
-        
-        st.markdown("### 🧪 Test Cases")
-        test_placeholder = st.empty()
-        tests = ""
-        
-        for chunk in run_chain_stream(
-            "Create comprehensive test cases for this {lang} code:\n\n{code}\n\nReturn ONLY test code without explanation.",
-            {"lang": language, "code": code}
-        ):
-            tests = chunk
-            test_placeholder.code(tests, language=language)
-        
-        st.session_state.chat_history.append(("assistant", tests))
-        
-        st.markdown("---")
-        st.markdown("### 📖 Test Explanation")
-        explanation_placeholder = st.empty()
-        explanation = ""
-        
-        for chunk in run_chain_stream(
-            "Explain what each test case does and why it's important for this function.",
-            {"code": code}
-        ):
-            explanation = chunk
-            explanation_placeholder.markdown(explanation)
-
-def handle_optimize(user_input):
-    st.subheader("⚡ Optimize - Improve Your Code")
-    
-    with st.form("optimize_form"):
-        language = st.selectbox("Programming Language", ["python", "javascript", "java", "cpp", "c"], key="opt_lang")
-        code = st.text_area("📝 Paste your code:", height=150, placeholder="# Your code here")
-        
-        submitted = st.form_submit_button("🚀 Optimize", use_container_width=True)
-    
-    if submitted and code:
-        st.session_state.chat_history.append(("user", f"Optimize: {code[:100]}..."))
-        
-        st.markdown("### ⚡ Optimized Code")
-        optimized_placeholder = st.empty()
-        optimized = ""
-        
-        for chunk in run_chain_stream(
-            "Improve this {lang} code for better performance, readability, and efficiency:\n\n{code}\n\nShow only the optimized code.",
-            {"lang": language, "code": code}
-        ):
-            optimized = chunk
-            optimized_placeholder.code(optimized, language=language)
-        
-        st.session_state.chat_history.append(("assistant", optimized))
-        
-        st.markdown("---")
-        st.markdown("### 📊 Improvements Made")
-        improvements_placeholder = st.empty()
-        improvements = ""
-        
-        for chunk in run_chain_stream(
-            "List the key improvements made to this code and why they make it better.",
-            {"code": optimized}
-        ):
-            improvements = chunk
-            improvements_placeholder.markdown(improvements)
-
-def handle_search(user_input):
-    st.subheader("🔍 Search - How-To Solutions")
-    
-    with st.form("search_form"):
-        problem = st.text_area(
-            "What do you want to learn how to do?",
-            value=user_input.replace("how", "").replace("help", "").replace("search", "").strip(),
-            height=80,
-            placeholder="e.g., How to read a file in Python, How to create a web server"
-        )
-        
-        submitted = st.form_submit_button("🔎 Search", use_container_width=True)
-    
-    if submitted and problem:
-        st.session_state.chat_history.append(("user", f"How to: {problem}"))
-        
-        st.markdown("### 📋 Step-by-Step Solution")
-        solution_placeholder = st.empty()
-        solution = ""
-        
-        for chunk in run_chain_stream(
-            "How to: {prob}\n\nGive a clear step-by-step solution with working code examples.",
-            {"prob": problem}
-        ):
-            solution = chunk
-            solution_placeholder.markdown(solution)
-        
-        st.session_state.chat_history.append(("assistant", solution))
-
-def handle_general(user_input):
-    st.subheader("💬 General Question")
-    
-    with st.form("general_form"):
-        question = st.text_area("Your question:", value=user_input, height=100)
-        submitted = st.form_submit_button("🤔 Ask", use_container_width=True)
-    
-    if submitted and question:
-        st.session_state.chat_history.append(("user", question))
-        
-        answer_placeholder = st.empty()
-        answer = ""
-        
-        for chunk in run_chain_stream(
-            "Answer this programming question clearly and helpfully:\n\n{q}",
-            {"q": question}
-        ):
-            answer = chunk
-            answer_placeholder.markdown(answer)
-        
-        st.session_state.chat_history.append(("assistant", answer))
+def show_disclaimer():
+    """Show disclaimer after each response"""
+    st.markdown("---")
+    st.info("⚠️ **Note from Sorus**: I'm an AI and can make mistakes. Always test and verify code before using in production!")
 
 # ==================== SIDEBAR ====================
-with st.sidebar:
-    st.markdown("## 🚀 Coding Education Agent")
-    st.markdown("---")
+st.sidebar.title("🚀 Sorus AI")
+st.sidebar.markdown("Coding Education Agent")
+st.sidebar.markdown("---")
+
+section = st.sidebar.radio(
+    "📑 Choose Section:",
+    ["🏗️ Build", "🐛 Debug", "✅ Test", "⚡ Optimize", "📚 Explain", "🔍 Search", "💬 General"]
+)
+
+st.sidebar.markdown("---")
+
+if st.sidebar.button("🗑️ Clear History", use_container_width=True):
+    st.session_state.chat_history = []
+    st.session_state.generated_files = []
+    st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("""
+**🎓 Educational Purpose Only**
+
+Always verify generated code!
+""")
+
+# ==================== MAIN TITLE ====================
+st.title("🚀 Intelligent Coding Education Agent")
+st.markdown("**Sorus**: Your AI coding tutor • Learn • Build • Debug • Test")
+st.markdown("---")
+
+# ==================== 1. BUILD SECTION ====================
+if section == "🏗️ Build":
+    st.subheader("🏗️ Build - Generate Code")
+    st.markdown("Tell me what you want to build, and I'll generate working code for you!")
     
-    section = st.radio(
-        "📑 Select Section",
-        ["🏗️ Build", "🐛 Debug", "✅ Test", "⚡ Optimize", "📚 Explain", "🔍 Search", "💬 General"],
-        key="section"
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        requirement = st.text_area(
+            "📝 What do you want to build?",
+            placeholder="Example: Create a Python function to calculate fibonacci numbers\nOr: Build a JavaScript function to sort an array",
+            height=120,
+            key="build_input"
+        )
+    
+    with col2:
+        language = st.selectbox(
+            "Language",
+            ["python", "javascript", "java", "cpp", "c"],
+            key="build_lang"
+        )
+    
+    memory = st.text_input("Memory limit (optional)", "512MB", key="build_mem")
+    time_limit = st.text_input("Time limit (optional)", "30s", key="build_time")
+    
+    if st.button("🚀 Generate Code", use_container_width=True, key="build_btn"):
+        if requirement:
+            st.session_state.chat_history.append(("user", requirement))
+            
+            st.markdown("### Generated Code:")
+            code_placeholder = st.empty()
+            
+            generated_code = stream_response(
+                code_placeholder,
+                "Create working {lang} code for: {req}\n\nReturn ONLY code without explanation.",
+                {"lang": language, "req": requirement}
+            )
+            
+            st.session_state.chat_history.append(("assistant", generated_code))
+            
+            # Save button
+            if st.button("💾 Save This Code", key="save_build"):
+                filename = requirement[:25].replace(" ", "_")
+                path = save_code(filename, generated_code, language)
+                st.success(f"✅ Code saved to: `{path}`")
+            
+            # Show error analysis
+            st.markdown("---")
+            st.markdown("### 📊 Possible Errors & Edge Cases:")
+            error_placeholder = st.empty()
+            
+            stream_response(
+                error_placeholder,
+                "For this {lang} code with {mem} memory and {time} time limit:\n\n{code}\n\nList:\n1. Possible runtime errors\n2. Edge cases\n3. Common mistakes",
+                {
+                    "lang": language,
+                    "code": generated_code,
+                    "mem": memory,
+                    "time": time_limit
+                }
+            )
+            
+            # Simple explanation
+            st.markdown("---")
+            st.markdown("### 💡 What This Code Does (Simple Explanation):")
+            explain_placeholder = st.empty()
+            
+            stream_response(
+                explain_placeholder,
+                "Explain this {lang} code in very simple words, like explaining to a 5-year-old:\n\n{code}",
+                {"lang": language, "code": generated_code}
+            )
+            
+            show_disclaimer()
+        else:
+            st.warning("Please tell me what you want to build!")
+
+# ==================== 2. DEBUG SECTION ====================
+elif section == "🐛 Debug":
+    st.subheader("🐛 Debug - Fix Your Code")
+    st.markdown("Paste your broken code and the error message, and I'll fix it!")
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        language = st.selectbox(
+            "Language",
+            ["python", "javascript", "java", "cpp", "c"],
+            key="debug_lang"
+        )
+    
+    with col2:
+        pass
+    
+    code_to_fix = st.text_area(
+        "📝 Your code:",
+        placeholder="Paste your broken code here...",
+        height=150,
+        key="debug_code"
     )
     
-    st.markdown("---")
+    error_message = st.text_area(
+        "❌ Error message:",
+        placeholder="Paste the error message you're getting...",
+        height=100,
+        key="debug_error"
+    )
     
-    # Resources info
-    with st.expander("💾 Resources & Files", expanded=False):
-        if st.session_state.generated_files:
-            st.write("### Generated Files:")
-            for file_info in st.session_state.generated_files:
-                with st.expander(f"📄 {file_info['name']}"):
-                    st.code(file_info['code'], language="python")
-                    st.download_button(
-                        f"⬇️ Download {file_info['name']}",
-                        file_info['code'],
-                        file_name=f"{file_info['name']}.py"
-                    )
+    if st.button("🔧 Fix Code", use_container_width=True, key="debug_btn"):
+        if code_to_fix and error_message:
+            st.session_state.chat_history.append(("user", f"Debug: {code_to_fix[:50]}..."))
+            
+            st.markdown("### ✅ Fixed Code:")
+            fixed_placeholder = st.empty()
+            
+            fixed_code = stream_response(
+                fixed_placeholder,
+                "Fix this {lang} code:\n\nBroken Code:\n{code}\n\nError:\n{err}\n\nReturn ONLY the corrected code.",
+                {"lang": language, "code": code_to_fix, "err": error_message}
+            )
+            
+            st.session_state.chat_history.append(("assistant", fixed_code))
+            
+            # Explanation
+            st.markdown("---")
+            st.markdown("### 📝 What Was Wrong?")
+            explanation_placeholder = st.empty()
+            
+            stream_response(
+                explanation_placeholder,
+                "Explain what was wrong with this code and how the fix solves it:\n\nOriginal Error: {err}",
+                {"err": error_message}
+            )
+            
+            show_disclaimer()
         else:
-            st.info("No files generated yet. Start building code!")
+            st.warning("Please paste both your code AND the error message!")
+
+# ==================== 3. TEST SECTION ====================
+elif section == "✅ Test":
+    st.subheader("✅ Test - Generate Test Cases")
+    st.markdown("Paste your code and I'll create test cases for it!")
     
-    # Chat history
-    with st.expander("💬 Chat History", expanded=False):
-        if st.session_state.chat_history:
-            for role, message in st.session_state.chat_history:
-                if role == "user":
-                    st.write(f"👤 **You**: {message[:100]}...")
-                else:
-                    st.write(f"🤖 **Agent**: {message[:100]}...")
+    language = st.selectbox(
+        "Language",
+        ["python", "javascript", "java", "cpp", "c"],
+        key="test_lang"
+    )
+    
+    code = st.text_area(
+        "📝 Your code:",
+        placeholder="Paste your code here...",
+        height=150,
+        key="test_code"
+    )
+    
+    if st.button("🧪 Generate Tests", use_container_width=True, key="test_btn"):
+        if code:
+            st.session_state.chat_history.append(("user", f"Test: {code[:50]}..."))
+            
+            st.markdown("### 🧪 Test Cases:")
+            tests_placeholder = st.empty()
+            
+            test_code = stream_response(
+                tests_placeholder,
+                "Create comprehensive test cases for this {lang} code:\n\n{code}\n\nReturn ONLY test code.",
+                {"lang": language, "code": code}
+            )
+            
+            st.session_state.chat_history.append(("assistant", test_code))
+            
+            # Explanation
+            st.markdown("---")
+            st.markdown("### 📖 Test Explanation:")
+            explanation_placeholder = st.empty()
+            
+            stream_response(
+                explanation_placeholder,
+                "Explain each test case and why it's important for testing this code properly.",
+                {}
+            )
+            
+            show_disclaimer()
         else:
-            st.info("Chat history is empty")
+            st.warning("Please paste your code!")
+
+# ==================== 4. OPTIMIZE SECTION ====================
+elif section == "⚡ Optimize":
+    st.subheader("⚡ Optimize - Improve Your Code")
+    st.markdown("Make your code faster, cleaner, and better!")
     
-    st.markdown("---")
+    language = st.selectbox(
+        "Language",
+        ["python", "javascript", "java", "cpp", "c"],
+        key="opt_lang"
+    )
     
-    if st.button("🗑️ Clear All", use_container_width=True):
-        st.session_state.chat_history = []
-        st.session_state.generated_files = []
-        st.success("✅ Cleared!")
-        st.rerun()
+    code = st.text_area(
+        "📝 Your code:",
+        placeholder="Paste your code here...",
+        height=150,
+        key="opt_code"
+    )
+    
+    if st.button("⚡ Optimize", use_container_width=True, key="opt_btn"):
+        if code:
+            st.session_state.chat_history.append(("user", f"Optimize: {code[:50]}..."))
+            
+            st.markdown("### ⚡ Optimized Code:")
+            optimized_placeholder = st.empty()
+            
+            optimized_code = stream_response(
+                optimized_placeholder,
+                "Optimize this {lang} code for performance and readability:\n\n{code}\n\nReturn ONLY optimized code.",
+                {"lang": language, "code": code}
+            )
+            
+            st.session_state.chat_history.append(("assistant", optimized_code))
+            
+            # Improvements
+            st.markdown("---")
+            st.markdown("### 📊 Improvements Made:")
+            improvements_placeholder = st.empty()
+            
+            stream_response(
+                improvements_placeholder,
+                "List the key improvements and why they make the code better.",
+                {}
+            )
+            
+            show_disclaimer()
+        else:
+            st.warning("Please paste your code!")
 
-# ==================== MAIN CONTENT ====================
-st.title(" Intelligent Coding  Agent")
-st.markdown("Sorus is an Ai and can make mistakes.Please double check Responses or verify information from trusted sources")
+# ==================== 5. EXPLAIN SECTION ====================
+elif section == "📚 Explain":
+    st.subheader("📚 Explain - Learn Programming Concepts")
+    st.markdown("Ask me to explain any programming concept or code!")
+    
+    topic_or_code = st.text_area(
+        "📝 What do you want to understand?",
+        placeholder="Examples:\n- What is recursion?\n- Explain loops\n- How do functions work?\n- Explain this code: def add(a,b): return a+b",
+        height=150,
+        key="explain_input"
+    )
+    
+    if st.button("📖 Explain", use_container_width=True, key="explain_btn"):
+        if topic_or_code:
+            st.session_state.chat_history.append(("user", f"Explain: {topic_or_code[:50]}..."))
+            
+            st.markdown("### 🎓 Explanation (For Beginners):")
+            explanation_placeholder = st.empty()
+            
+            explanation = stream_response(
+                explanation_placeholder,
+                "Explain this in very simple words using real-world examples:\n\n{topic}",
+                {"topic": topic_or_code}
+            )
+            
+            st.session_state.chat_history.append(("assistant", explanation))
+            
+            # Common mistakes
+            st.markdown("---")
+            st.markdown("### ⚠️ Common Mistakes:")
+            mistakes_placeholder = st.empty()
+            
+            stream_response(
+                mistakes_placeholder,
+                "List 3-5 common mistakes beginners make when learning about: {topic}",
+                {"topic": topic_or_code}
+            )
+            
+            # Pro tips
+            st.markdown("---")
+            st.markdown("### 💡 Pro Tips:")
+            tips_placeholder = st.empty()
+            
+            stream_response(
+                tips_placeholder,
+                "Give 3 pro tips for mastering: {topic}",
+                {"topic": topic_or_code}
+            )
+            
+            show_disclaimer()
+        else:
+            st.warning("Tell me what you want to understand!")
 
+# ==================== 6. SEARCH SECTION ====================
+elif section == "🔍 Search":
+    st.subheader("🔍 Search - How-To Solutions")
+    st.markdown("Ask me how to do something in programming!")
+    
+    problem = st.text_area(
+        "❓ How to...",
+        placeholder="Examples:\n- How to read a file in Python?\n- How to create a function in JavaScript?\n- How to sort an array?\n- How to handle errors in Python?",
+        height=120,
+        key="search_input"
+    )
+    
+    if st.button("🔎 Search", use_container_width=True, key="search_btn"):
+        if problem:
+            st.session_state.chat_history.append(("user", f"How to: {problem}"))
+            
+            st.markdown("### 📋 Step-by-Step Solution:")
+            solution_placeholder = st.empty()
+            
+            solution = stream_response(
+                solution_placeholder,
+                "How to: {prob}\n\nGive clear step-by-step instructions with working code examples.",
+                {"prob": problem}
+            )
+            
+            st.session_state.chat_history.append(("assistant", solution))
+            
+            show_disclaimer()
+        else:
+            st.warning("Ask me how to do something!")
 
+# ==================== 7. GENERAL SECTION ====================
+else: # General
+    st.subheader("💬 Ask Anything About Coding")
+    st.markdown("Ask any programming question and I'll help!")
+    
+    question = st.text_area(
+        "❓ Your question:",
+        placeholder="Ask anything about programming...",
+        height=120,
+        key="general_input"
+    )
+    
+    if st.button("🤔 Ask", use_container_width=True, key="general_btn"):
+        if question:
+            st.session_state.chat_history.append(("user", question))
+            
+            st.markdown("### 💡 Answer:")
+            answer_placeholder = st.empty()
+            
+            answer = stream_response(
+                answer_placeholder,
+                "Answer this programming question clearly and helpfully:\n\n{q}",
+                {"q": question}
+            )
+            
+            st.session_state.chat_history.append(("assistant", answer))
+            
+            show_disclaimer()
+        else:
+            st.warning("Ask me a question!")
+
+# ==================== FOOTER ====================
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; color: #666; padding: 20px 0;'>
+    <p>🎓 Educational Purpose Only • Sorus is an AI and makes mistakes • Always verify code • Have fun learning! 🚀</p>
+</div>
+""", unsafe_allow_html=True)
 
