@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 
 
 st.set_page_config(
-    page_title="Sorus AI Pro",
+    page_title="Sorus AI ",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -462,7 +462,7 @@ def save_code(filename, code, language):
 
 def show_disclaimer():
     st.markdown("---")
-    st.info("⚠️ **Note from Sorus**: I'm an AI and can make mistakes. Always test and verify code before using in production!")
+    st.info("⚠️ **Note from Sorus**: Sorus is  an AI and can make mistakes. Double check the responses.")
 
 # ==================== MODAL COMPONENT ====================
 
@@ -546,17 +546,17 @@ st.sidebar.markdown("*Advanced Code Generation & Analysis*")
 st.sidebar.markdown("---")
 
 sections = [
-    "🏗️ Build",
-    "🐛 Debug",
-    "✅ Test",
-    "⚡ Optimize",
-    "📚 Explain",
-    "🔍 Search",
-    "💬 Ask"
+    " Build",
+    " Debug",
+    " Test",
+    " Optimize",
+    " Explain",
+    " Search",
+    " Ask"
 ]
 
 section = st.sidebar.selectbox(
-    "📑 Choose Section:",
+    " Choose Section:",
     sections,
     key="section_select"
 )
@@ -610,14 +610,14 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("**Made with ⚡ for Excellence**")
 
 # ==================== MAIN TITLE ====================
-st.title("⚡ Sorus AI Pro")
-st.markdown("✨ Production-grade code generation with web intelligence and deep resource analysis")
+st.title("⚡ Sorus AI ")
+st.markdown(" Outputs are AI-generated and may contain errors or incomplete implementations. Human review, testing, and validation are required before use in production environments.")
 st.markdown("---")
 
 # ==================== 1. BUILD SECTION (GEMINI AI STYLE) ====================
-if section == "🏗️ Build":
-    st.subheader("🏗️ Build - Professional Code Generation")
-    st.markdown("Describe what you want to build. I'll break it down step-by-step, showing you the plan before coding.")
+if section == " Build":
+    st.subheader(" Build - Professional Code Generation")
+    st.markdown("Describe what you want to build. showing you the plan before coding.")
 
     requirement = st.text_area(
         "📝 What do you want to build?",
@@ -915,9 +915,9 @@ if section == "🏗️ Build":
             st.warning("❌ Please describe what you want to build!")
 
 # ==================== 2. DEBUG SECTION ====================
-elif section == "🐛 Debug":
-    st.subheader("🐛 Debug - Deep Issue Analysis")
-    st.markdown("Paste broken code and I'll find and fix all issues")
+elif section == " Debug":
+    st.subheader(" Debug - Deep Issue Analysis")
+    st.markdown("Paste broken code and fix your issues")
 
     code_to_fix = st.text_area(
         "📝 Your broken code (with error if available):",
@@ -979,8 +979,8 @@ elif section == "🐛 Debug":
             st.warning("❌ Paste code to debug!")
 
 # ==================== 3. TEST SECTION ====================
-elif section == "✅ Test":
-    st.subheader("✅ Test - Comprehensive Test Generation")
+elif section == " Test":
+    st.subheader(" Test - Comprehensive Test Generation")
     st.markdown("Generate deep, comprehensive test cases covering all scenarios")
 
     code = st.text_area(
@@ -1036,8 +1036,8 @@ elif section == "✅ Test":
             st.warning("❌ Paste code!")
 
 # ==================== 4. OPTIMIZE SECTION ====================
-elif section == "⚡ Optimize":
-    st.subheader("⚡ Optimize - Deep Performance Enhancement")
+elif section == " Optimize":
+    st.subheader(" Optimize - Deep Performance Enhancement")
 
     code = st.text_area(
         "📝 Your code:",
@@ -1046,7 +1046,7 @@ elif section == "⚡ Optimize":
         key="opt_code"
     )
 
-    if st.button("⚡ Optimize", use_container_width=True, key="opt_btn"):
+    if st.button(" Optimize", use_container_width=True, key="opt_btn"):
         if code:
             with st.spinner("🚀 Deep optimization..."):
                 
@@ -1092,8 +1092,8 @@ elif section == "⚡ Optimize":
             st.warning("❌ Paste code!")
 
 # ==================== 5. EXPLAIN SECTION (IMPROVED) ====================
-elif section == "📚 Explain":
-    st.subheader("📚 Explain - Deep Learning Content")
+elif section == " Explain":
+    st.subheader(" Explain - Deep Learning Content")
     st.markdown("Learn concepts with detailed explanations and real-world examples")
 
     topic = st.text_area(
@@ -1168,8 +1168,8 @@ elif section == "📚 Explain":
             st.warning("❌ Ask something to explain!")
 
 # ==================== 6. SEARCH SECTION ====================
-elif section == "🔍 Search":
-    st.subheader("🔍 Search - Deep How-To Solutions")
+elif section == " Search":
+    st.subheader(" Search - Deep How-To Solutions")
     st.markdown("Find comprehensive solutions with code examples")
 
     problem = st.text_area(
@@ -1232,9 +1232,9 @@ else:
         key="general_input"
     )
 
-    if st.button("🤔 Ask", use_container_width=True, key="general_btn"):
+    if st.button(" Ask", use_container_width=True, key="general_btn"):
         if question:
-            with st.spinner("🤔 Thinking..."):
+            with st.spinner(" Thinking..."):
                 
                 st.markdown('<div class="phase-header">💡 Answer</div>', unsafe_allow_html=True)
                 answer_ph = st.empty()
@@ -1276,8 +1276,8 @@ else:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 20px 0;'>
-    <p>⚡ Production-Grade Code Generation • AI-Powered Web Search • Deep Resource Analysis</p>
-    <p style='font-size: 12px; margin-top: 10px;'>✨ Powered by Groq + LLaMA 3.3 70B + Tavily Search API</p>
-    <p style='font-size: 11px; color: #999; margin-top: 6px;'>🔗 <a href='https://tavily.com' target='_blank'>Tavily API</a> • Real-time web intelligence for AI</p>
+    <p Outputs are AI-generated and may contain errors or incomplete implementations. Human review, testing, and validation are required before use in production environments.</p>
+    
+   
 </div>
 """, unsafe_allow_html=True)
