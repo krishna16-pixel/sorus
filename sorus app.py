@@ -21,53 +21,26 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes rgbBorder {
-        0% { 
-            border-color: rgb(255, 0, 0) !important;
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6) !important;
-        }
-        14% { 
-            border-color: rgb(255, 127, 0) !important;
-            box-shadow: 0 0 15px rgba(255, 127, 0, 0.6) !important;
-        }
-        28% { 
-            border-color: rgb(0, 255, 0) !important;
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.6) !important;
-        }
-        42% { 
-            border-color: rgb(0, 100, 255) !important;
-            box-shadow: 0 0 15px rgba(0, 100, 255, 0.6) !important;
-        }
-        56% { 
-            border-color: rgb(148, 0, 211) !important;
-            box-shadow: 0 0 15px rgba(148, 0, 211, 0.6) !important;
-        }
-        71% { 
-            border-color: rgb(255, 0, 127) !important;
-            box-shadow: 0 0 15px rgba(255, 0, 127, 0.6) !important;
-        }
-        85% {
-            border-color: rgb(255, 165, 0) !important;
-            box-shadow: 0 0 15px rgba(255, 165, 0, 0.6) !important;
-        }
-        100% { 
-            border-color: rgb(255, 0, 0) !important;
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6) !important;
-        }
+    @keyframes rainbow {
+        0% { border-color: #ff0000; }
+        16% { border-color: #ff7f00; }
+        33% { border-color: #ffff00; }
+        50% { border-color: #00ff00; }
+        66% { border-color: #0000ff; }
+        83% { border-color: #4b0082; }
+        100% { border-color: #ff0000; }
     }
 
     .stTextArea textarea {
+        border: 3px solid #ff0000 !important;
         border-radius: 8px !important;
-        border: 3px solid !important;
-        border-color: rgb(255, 0, 0) !important;
-        animation: rgbBorder 4s linear infinite !important;
+        animation: rainbow 4s linear infinite !important;
     }
 
     .stTextInput input {
+        border: 3px solid #ff0000 !important;
         border-radius: 8px !important;
-        border: 3px solid !important;
-        border-color: rgb(255, 0, 0) !important;
-        animation: rgbBorder 4s linear infinite !important;
+        animation: rainbow 4s linear infinite !important;
     }
 
 
