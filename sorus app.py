@@ -432,7 +432,7 @@ def stream_response_with_web(placeholder, template, variables, include_web_searc
 
 def run_chain(template, variables):
     """Non-streaming response from LLM"""
-    prompt = PromptTemplate(template=template, input_variables=list(variables.keys()) if variables else [])
+    prompt = PromptTemplate.from_template(template)
     chain = prompt | llm
     response = chain.invoke(variables if variables else {})
     return response.content if hasattr(response, 'content') else str(response)
