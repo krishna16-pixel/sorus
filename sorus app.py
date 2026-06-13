@@ -347,7 +347,7 @@ def tavily_search(query):
     """Search using Tavily API - optimized for AI applications"""
     if not TAVILY_API_KEY:
         return {"success": False, "error": "Tavily API key not configured"}
-    
+   
     try:
         url = "https://api.tavily.com/search"
         payload = {
@@ -358,20 +358,20 @@ def tavily_search(query):
             "include_images": False,
             "search_depth": "advanced"
         }
-        
+       
         response = requests.post(url, json=payload, timeout=10)
-        
+       
         if response.status_code == 200:
             data = response.json()
-            
+           
             # Extract answer and sources
             answer = data.get("answer", "")
             results = data.get("results", [])
-            
+           
             sources_text = ""
             for i, result in enumerate(results[:3], 1):
-                sources_text += f"\n{i}. {result.get('title', '')}\n   {result.get('url', '')}"
-            
+                sources_text += f"\n{i}. {result.get('title', '')}\n {result.get('url', '')}"
+           
             return {
                 "success": True,
                 "answer": answer,
@@ -380,61 +380,61 @@ def tavily_search(query):
             }
         else:
             return {"success": False, "error": f"API error: {response.status_code}"}
-            
+           
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 def stream_response_with_web(placeholder, template, variables, include_web_search=False, search_query=None):
     """Stream response with Tavily web search integration"""
-    
+   
     web_context = ""
     sources_display = ""
-    
+   
     if include_web_search and search_query and TAVILY_API_KEY:
         with st.spinner("🔍 Searching web with Tavily..."):
             search_result = tavily_search(search_query)
             if search_result.get("success"):
                 web_answer = search_result.get("answer", "")
                 sources = search_result.get("sources", "")
-                
+               
                 web_context = f"\n\n[WEB SEARCH CONTEXT]\n{web_answer}\n\nSOURCES:{sources}"
                 sources_display = sources
-    
+   
     # Enhanced template with web context
     enhanced_template = template
     if web_context:
         enhanced_template = template + web_context
-    
-    prompt = PromptTemplate(template=enhanced_template, input_variables=list(variables.keys()))
+   
+    prompt = PromptTemplate(template=enhanced_template, input_variables=list(variables.keys()) if variables else [])
     chain = prompt | llm
     full_response = ""
-    
+   
     try:
-        for chunk in chain.stream(variables):
+        for chunk in chain.stream(variables if variables else {}):
             if hasattr(chunk, 'content'):
                 full_response += chunk.content
             else:
                 full_response += str(chunk)
             placeholder.markdown(full_response + "▌")
-        
+       
         placeholder.markdown(full_response)
     except Exception as e:
-        response = chain.invoke(variables)
+        response = chain.invoke(variables if variables else {})
         full_response = response.content if hasattr(response, 'content') else str(response)
         placeholder.markdown(full_response)
-    
+   
     # Display sources if available
     if sources_display:
         with st.expander("📚 Sources used"):
             st.markdown(sources_display)
-    
+   
     return full_response
 
 def run_chain(template, variables):
     """Non-streaming response from LLM"""
-    prompt = PromptTemplate(template=template, input_variables=list(variables.keys()))
+    prompt = PromptTemplate(template=template, input_variables=list(variables.keys()) if variables else [])
     chain = prompt | llm
-    response = chain.invoke(variables)
+    response = chain.invoke(variables if variables else {})
     return response.content if hasattr(response, 'content') else str(response)
 
 def add_to_history(role, content, section):
@@ -448,28 +448,28 @@ def add_to_history(role, content, section):
     })
 
 def save_code(filename, code, language):
-    ext = {"python": "py", "javascript": "js", "java": "java", "cpp": "cpp"}.get(language, "txt")
+    """Save generated code to file"""
+    ext = {"python": "py", "javascript": "js", "java": "java", "cpp": "cpp"}.get(language.lower(), "txt")
     path = f"generated_code/{filename}.{ext}"
     with open(path, "w") as f:
         f.write(code)
     st.session_state.generated_files.append({
-        "name": filename, 
-        "path": path, 
+        "name": filename,
+        "path": path,
         "code": code,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
     })
     return path
 
 def show_disclaimer():
+    """Show disclaimer message"""
     st.markdown("---")
-    st.info("⚠️ **Note from Sorus**: Sorus is  an AI and can make mistakes. Double check the responses.")
-
-# ==================== MODAL COMPONENT ====================
+    st.info("⚠️ **Note from Sorus**: Sorus is an AI and can make mistakes. Double check the responses.")
 
 def show_resource_modal(code):
     """Show resource analysis modal"""
     col1, col2, col3 = st.columns([1, 10, 1])
-    
+   
     with col2:
         st.markdown("""
         <div class="modal-backdrop" id="modal-backdrop"></div>
@@ -479,32 +479,32 @@ def show_resource_modal(code):
                 <button class="close-btn" onclick="document.getElementById('modal-backdrop').remove()">✕</button>
             </div>
         """, unsafe_allow_html=True)
-        
+       
         with st.form("resource_analysis_form"):
             st.markdown('<div class="form-group">', unsafe_allow_html=True)
             memory = st.text_input("Memory Limit (MB)", value="512")
             st.markdown('</div>', unsafe_allow_html=True)
-            
+           
             st.markdown('<div class="form-group">', unsafe_allow_html=True)
             time_limit = st.text_input("Time Limit (seconds)", value="10")
             st.markdown('</div>', unsafe_allow_html=True)
-            
+           
             st.markdown('<div class="form-group">', unsafe_allow_html=True)
             input_size = st.text_input("Input Data Size", value="10000 elements")
             st.markdown('</div>', unsafe_allow_html=True)
-            
+           
             st.markdown('<div class="form-group">', unsafe_allow_html=True)
             py_version = st.text_input("Python Version", value="3.10+")
             st.markdown('</div>', unsafe_allow_html=True)
-            
+           
             st.markdown('<div class="form-group">', unsafe_allow_html=True)
             st.write("Available Dependencies")
             dependencies = st.text_area("", value="Standard library only", height=80, label_visibility="collapsed")
             st.markdown('</div>', unsafe_allow_html=True)
-            
+           
             if st.form_submit_button("🔍 Deep Analysis", use_container_width=True):
                 analysis_ph = st.empty()
-                
+               
                 analysis = stream_response_with_web(
                     analysis_ph,
                     "Perform DEEP resource-based analysis:\n\n"
@@ -535,17 +535,14 @@ def show_resource_modal(code):
                     include_web_search=True,
                     search_query=f"Python performance optimization {py_version} memory constraints"
                 )
-                
+               
                 st.success("✅ Deep analysis complete!")
-        
+       
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== SIDEBAR ====================
 st.sidebar.title("Sorus AI ")
-st.sidebar.markdown("""This coding agent is an AI-powered
-tool that generates and assists with writing, modifying, and analyzing code. All outputs are automatically generated and may contain errors,
-security vulnerabilities, incomplete logic, or outdated practices, and should not be treated as verified or production-ready. Users are solely responsible for reviewing,
-testing, and validating all generated code before use, including checking for correctness, performance, security risks, dependency safety, and licensing compliance.
+st.sidebar.markdown("""This coding agent is an AI-powered tool that generates and assists with writing, modifying, and analyzing code. All outputs are automatically generated and may contain errors, security vulnerabilities, incomplete logic, or outdated practices, and should not be treated as verified or production-ready. Users are solely responsible for reviewing, testing, and validating all generated code before use, including checking for correctness, performance, security risks, dependency safety, and licensing compliance.
 """)
 st.sidebar.markdown("---")
 
@@ -615,13 +612,13 @@ st.sidebar.markdown("This coding agent is an AI-powered assistant designed to he
 
 # ==================== MAIN TITLE ====================
 st.title("⚡ Sorus AI ")
-st.markdown(" Outputs are AI-generated and may contain errors or incomplete implementations. Human review, testing, and validation are required before use in production environments.")
+st.markdown("💡 Outputs are AI-generated and may contain errors or incomplete implementations. Human review, testing, and validation are required before use in production environments.")
 st.markdown("---")
 
-# ==================== 1. BUILD SECTION (GEMINI AI STYLE) ====================
+# ==================== BUILD SECTION (REFACTORED) ====================
 if section == " Build":
     st.subheader(" Build - Professional Code Generation")
-    st.markdown("Describe what you want to build. showing you the plan before coding.")
+    st.markdown("Describe what you want to build. We'll analyze requirements, fetch best practices, and generate production-ready code.")
 
     requirement = st.text_area(
         "📝 What do you want to build?",
@@ -630,658 +627,541 @@ if section == " Build":
         key="build_input"
     )
     
-    use_web_search = st.checkbox("🌐 Search web for latest best practices", value=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        programming_language = st.selectbox("🔧 Language", ["Python", "JavaScript", "Java", "C++"], key="build_lang")
+    with col2:
+        use_web_search = st.checkbox("🌐 Web Search", value=True, key="build_web")
+    with col3:
+        advanced_analysis = st.checkbox("📊 Deep Analysis", value=False, key="build_deep")
+    
+    if st.button("🚀 Generate Code", use_container_width=True, key="build_submit"):
+        if not requirement.strip():
+            st.error("Please enter a requirement")
+            st.stop()
+        
+        # ==================== PHASE 1: FETCH INFORMATION ====================
+        st.subheader("📚 Step 1: Information Fetched")
+        info_placeholder = st.empty()
+        
+        fetch_info_prompt = f"""Analyze this requirement and provide ONLY the following structured information:
 
-    if st.button("🚀 Analyze & Build", use_container_width=True, key="build_btn"):
-        if requirement:
-            with st.spinner("⏳ Deep analysis..."):
-                
-                # PHASE 1: REQUIREMENT ANALYSIS
-                st.markdown('<div class="phase-header">📋 Phase 1: Understanding Your Requirement</div>', unsafe_allow_html=True)
-                analysis_ph = st.empty()
-                
-                analysis = stream_response_with_web(
-                    analysis_ph,
-                    "Analyze this requirement deeply and provide:\n\n"
-                    "REQUIREMENT:\n{req}\n\n"
-                    "PROVIDE:\n"
-                    "1. WHAT YOU'RE BUILDING\n"
-                    "   - Core purpose\n"
-                    "   - Primary functionality\n"
-                    "   - Expected behavior\n\n"
-                    "2. KEY FEATURES TO IMPLEMENT\n"
-                    "   - List each feature\n"
-                    "   - Explain why it's needed\n"
-                    "   - Prioritize features\n\n"
-                    "3. CONSTRAINTS & REQUIREMENTS\n"
-                    "   - Performance requirements\n"
-                    "   - Size/scale constraints\n"
-                    "   - Compatibility needs\n"
-                    "   - Error handling requirements\n\n"
-                    "4. POTENTIAL CHALLENGES\n"
-                    "   - What could go wrong\n"
-                    "   - Edge cases to handle\n"
-                    "   - Performance bottlenecks\n\n"
-                    "Be clear and structured.",
-                    {"req": requirement},
-                    include_web_search=use_web_search,
-                    search_query=f"{requirement} requirements analysis"
-                )
-                
-                st.write("")
+REQUIREMENT: {requirement}
+LANGUAGE: {programming_language}
 
-                # PHASE 2: RESOURCES & DEPENDENCIES
-                st.markdown('<div class="phase-header">📚 Phase 2: Resources & Dependencies</div>', unsafe_allow_html=True)
-                resources_ph = st.empty()
-                
-                resources = stream_response_with_web(
-                    resources_ph,
-                    "For building this:\n{req}\n\n"
-                    "PROVIDE:\n"
-                    "1. REQUIRED LIBRARIES\n"
-                    "   - Library name\n"
-                    "   - Version (latest)\n"
-                    "   - Why it's needed\n"
-                    "   - Installation command\n\n"
-                    "2. EXTERNAL RESOURCES\n"
-                    "   - APIs needed\n"
-                    "   - Data sources\n"
-                    "   - Documentation links\n\n"
-                    "3. PYTHON VERSION\n"
-                    "   - Minimum version\n"
-                    "   - Recommended version\n"
-                    "   - Special features needed\n\n"
-                    "4. ENVIRONMENT SETUP\n"
-                    "   - Virtual environment\n"
-                    "   - Configuration files\n"
-                    "   - Setup commands\n\n"
-                    "Format as actionable steps.",
-                    {"req": requirement},
-                    include_web_search=use_web_search,
-                    search_query=f"{requirement} libraries dependencies requirements"
-                )
-                
-                st.write("")
+Provide in this exact format:
+1. KEY REQUIREMENTS (bullet points - what must be done)
+2. EDGE CASES (potential issues to handle)
+3. BEST PRACTICES (2-3 relevant patterns for {programming_language})
+4. COMPLEXITY ESTIMATE (Time/Space complexity if applicable)
 
-                # PHASE 3: ARCHITECTURE & DESIGN
-                st.markdown('<div class="phase-header">🏛️ Phase 3: Architecture & Design Plan</div>', unsafe_allow_html=True)
-                arch_ph = st.empty()
-                
-                architecture = stream_response_with_web(
-                    arch_ph,
-                    "Design the architecture for:\n{req}\n\n"
-                    "PROVIDE:\n"
-                    "1. OVERALL STRUCTURE\n"
-                    "   - Main components\n"
-                    "   - How they interact\n"
-                    "   - Data flow diagram (text)\n\n"
-                    "2. CLASS/FUNCTION DESIGN\n"
-                    "   - Main classes needed\n"
-                    "   - Primary functions\n"
-                    "   - Method signatures\n"
-                    "   - What each does\n\n"
-                    "3. DATA STRUCTURES\n"
-                    "   - Key data structures\n"
-                    "   - Why chosen\n"
-                    "   - Format/schema\n\n"
-                    "4. ERROR HANDLING STRATEGY\n"
-                    "   - Exception types\n"
-                    "   - Error messages\n"
-                    "   - Recovery strategies\n\n"
-                    "5. TESTING APPROACH\n"
-                    "   - Unit tests needed\n"
-                    "   - Test cases\n"
-                    "   - Edge cases\n\n"
-                    "Be detailed and architectural.",
-                    {"req": requirement},
-                    include_web_search=use_web_search,
-                    search_query=f"{requirement} architecture design patterns best practices"
-                )
-                
-                st.write("")
+Be concise. No fluff."""
+        
+        info_response = run_chain(fetch_info_prompt, {})
+        info_placeholder.markdown(info_response)
+        add_to_history("assistant", info_response, "Build - Information")
+        
+        # ==================== PHASE 2: TASKS ====================
+        st.subheader("✅ Step 2: Tasks to Complete")
+        tasks_placeholder = st.empty()
+        
+        tasks_prompt = f"""Based on this requirement, break down the implementation into clear tasks:
 
-                # PHASE 4: STEP-BY-STEP TASKS
-                st.markdown('<div class="phase-header">✅ Phase 4: Step-by-Step Implementation Tasks</div>', unsafe_allow_html=True)
-                tasks_ph = st.empty()
-                
-                tasks = stream_response_with_web(
-                    tasks_ph,
-                    "Create detailed step-by-step tasks for:\n{req}\n\n"
-                    "PROVIDE:\n"
-                    "List implementation tasks in order:\n\n"
-                    "STEP 1: [Task Name]\n"
-                    "├─ What to implement\n"
-                    "├─ Expected code size\n"
-                    "├─ Dependencies needed\n"
-                    "├─ How to test\n"
-                    "└─ Success criteria\n\n"
-                    "STEP 2: [Next Task]\n"
-                    "[Continue for all steps...]\n\n"
-                    "Each step should be:\n"
-                    "- Clear and concrete\n"
-                    "- Buildable independently\n"
-                    "- Testable separately\n"
-                    "- ~50-100 lines of code\n\n"
-                    "Include 6-8 logical steps total.",
-                    {"req": requirement},
-                    include_web_search=use_web_search,
-                    search_query=f"{requirement} implementation steps tutorial"
-                )
-                
-                st.write("")
+REQUIREMENT: {requirement}
+LANGUAGE: {programming_language}
 
-                # PHASE 5: PRODUCTION CODE
-                st.markdown('<div class="phase-header">⚙️ Phase 5: Production Code Generation</div>', unsafe_allow_html=True)
-                code_ph = st.empty()
-                
-                generated_code = stream_response_with_web(
-                    code_ph,
-                    "Generate COMPLETE PRODUCTION CODE for:\n{req}\n\n"
-                    "REQUIREMENTS:\n"
-                    "✓ Implement all features from analysis\n"
-                    "✓ Follow architecture design\n"
-                    "✓ Include all steps in logical order\n"
-                    "✓ Full type hints on all functions\n"
-                    "✓ Comprehensive Google-style docstrings\n"
-                    "✓ Complete error handling\n"
-                    "✓ Input validation\n"
-                    "✓ Edge case handling\n"
-                    "✓ Clear variable and function names\n"
-                    "✓ Comments on complex logic\n"
-                    "✓ Multiple working examples\n"
-                    "✓ No TODOs, no placeholders\n"
-                    "✓ Production-ready and tested\n\n"
-                    "CODE STRUCTURE:\n"
-                    "1. Imports (all needed libraries)\n"
-                    "2. Constants and configuration\n"
-                    "3. Utility functions\n"
-                    "4. Main classes/functions\n"
-                    "5. Complete examples\n"
-                    "6. Usage instructions\n\n"
-                    "Return ONLY the complete, working code.\n"
-                    "No explanations, just code.",
-                    {"req": requirement},
-                    include_web_search=use_web_search,
-                    search_query=f"{requirement} Python implementation"
-                )
+List 4-6 specific, actionable tasks in order. Format:
+1. [Task name] - [brief description]
+2. [Task name] - [brief description]
+...
 
-            st.write("")
+Be specific and implementation-focused."""
+        
+        tasks_response = run_chain(tasks_prompt, {})
+        tasks_placeholder.markdown(tasks_response)
+        add_to_history("assistant", tasks_response, "Build - Tasks")
+        
+        # ==================== PHASE 3: RESOURCES ====================
+        st.subheader("⚙️ Step 3: Required Resources")
+        resources_placeholder = st.empty()
+        
+        resources_prompt = f"""For this {programming_language} implementation, specify resources needed:
 
-            # PHASE 6: BEST PRACTICES & TIPS
-            st.markdown('<div class="phase-header">💡 Phase 6: Best Practices & Optimization Tips</div>', unsafe_allow_html=True)
-            tips_ph = st.empty()
+REQUIREMENT: {requirement}
+
+Format exactly as:
+**DEPENDENCIES:**
+- [library/module name]: [brief reason]
+
+**MEMORY/PERFORMANCE:**
+- [requirement]: [estimate]
+
+**SPECIAL CONSIDERATIONS:**
+- [any special setup needed]
+
+Keep it practical and minimal."""
+        
+        resources_response = run_chain(resources_prompt, {})
+        resources_placeholder.markdown(resources_response)
+        add_to_history("assistant", resources_response, "Build - Resources")
+        
+        # ==================== PHASE 4: WEB SEARCH ====================
+        if use_web_search:
+            st.subheader("🔍 Step 4: Web Search Results")
+            search_placeholder = st.empty()
             
-            tips = stream_response_with_web(
-                tips_ph,
-                "For this code:\n{code}\n\n"
-                "PROVIDE:\n"
-                "1. PERFORMANCE TIPS\n"
-                "   - Optimization opportunities\n"
-                "   - Time/space complexity\n"
-                "   - Bottlenecks\n\n"
-                "2. SECURITY CONSIDERATIONS\n"
-                "   - Input validation\n"
-                "   - Potential vulnerabilities\n"
-                "   - Safe practices\n\n"
-                "3. TESTING RECOMMENDATIONS\n"
-                "   - What to test\n"
-                "   - Test cases\n"
-                "   - How to verify\n\n"
-                "4. MAINTENANCE TIPS\n"
-                "   - Code clarity\n"
-                "   - Documentation\n"
-                "   - Common issues\n\n"
-                "5. EXTENSION POINTS\n"
-                "   - How to extend\n"
-                "   - Future improvements\n"
-                "   - Additional features\n\n"
-                "Be practical and actionable.",
-                {"code": generated_code},
-                include_web_search=use_web_search,
-                search_query=f"Python code best practices optimization"
-            )
+            search_query = f"{' '.join(requirement.split()[0:5])} {programming_language} best practices 2024"
             
-            # Store response
-            st.session_state.current_response = {
-                "code": generated_code,
-                "req": requirement,
-                "analysis": analysis,
-                "resources": resources,
-                "architecture": architecture,
-                "tasks": tasks,
-                "tips": tips,
-                "type": "build"
-            }
-            
-            add_to_history("user", requirement, "🏗️ Build")
-            add_to_history("assistant", generated_code, "🏗️ Build")
+            with st.spinner("Searching latest best practices..."):
+                search_result = tavily_search(search_query)
+                
+                if search_result.get("success"):
+                    answer = search_result.get("answer", "No results")
+                    sources = search_result.get("sources", "")
+                    
+                    search_placeholder.markdown(f"""
+**Search Query:** {search_query}
 
-            # Display final code
-            st.markdown("---")
-            if use_web_search:
-                st.markdown('<div class="web-search-badge">🌐 Generated with web research</div>', unsafe_allow_html=True)
-            
-            st.markdown("### 🎯 Final Production Code")
-            st.code(generated_code, language="python")
+{answer}
+                    """)
+                    
+                    if sources:
+                        with st.expander("📚 Sources"):
+                            st.markdown(sources)
+                    
+                    add_to_history("assistant", f"Web Search: {answer[:200]}", "Build - Web Search")
+        
+        # ==================== PHASE 5: SINGLE FINAL CODE ====================
+        st.subheader("💾 Step 5: Final Production-Ready Code")
+        code_placeholder = st.empty()
+        
+        code_prompt = f"""Generate ONE complete, production-ready {programming_language} solution.
 
-            # Action buttons
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if st.button("💾 Save Code", use_container_width=True):
-                    filename = requirement[:25].replace(" ", "_")
-                    path = save_code(filename, generated_code, "python")
-                    st.success(f"✅ Saved!")
-            
-            with col2:
-                if st.button("⚙️ Analyze Resources", use_container_width=True):
-                    st.session_state.show_modal = True
-                    st.session_state.modal_type = "resource"
-            
-            with col3:
-                if st.button("📋 Copy Code", use_container_width=True):
-                    st.info("✅ Ready to copy!")
+REQUIREMENT: {requirement}
 
-            # Show modal if triggered
-            if st.session_state.show_modal and st.session_state.modal_type == "resource":
-                show_resource_modal(generated_code)
-                st.session_state.show_modal = False
+REQUIREMENTS FOR CODE:
+- Include ALL necessary imports at the top
+- Add comprehensive docstrings/comments
+- Include full error handling
+- Add type hints (if applicable to {programming_language})
+- Add at least 2-3 usage examples at the bottom (as comments or separate functions)
+- Make it production-ready with no TODOs or placeholders
+- Clean, readable formatting
+- Handle edge cases
 
-            # Follow-up questions
-            st.markdown("---")
-            st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            st.markdown("### 🔄 Ask Follow-up Questions")
+Return ONLY the complete code. No explanations, no sections. Just the full working solution that could be saved to a file and run immediately."""
+        
+        full_code = stream_response_with_web(
+            code_placeholder,
+            code_prompt,
+            {},
+            include_web_search=False
+        )
+        
+        add_to_history("assistant", full_code, "Build - Final Code")
+        
+        # ==================== SAVE & OPTIONS ====================
+        st.divider()
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            filename = st.text_input("📁 Save as:", value=f"solution", key="build_filename")
+        
+        with col2:
+            if st.button("💾 Save Code", use_container_width=True, key="build_save"):
+                path = save_code(filename, full_code, programming_language.lower())
+                st.success(f"✅ Saved to `{path}`")
+        
+        with col3:
+            if st.button("📋 Copy Code", use_container_width=True, key="build_copy"):
+                st.code(full_code, language=programming_language.lower())
+        
+        # ==================== OPTIONAL DEEP ANALYSIS ====================
+        if advanced_analysis:
+            st.subheader("🔬 Optional: Deep Resource Analysis")
             
-            followup = st.text_input(
-                "Ask anything about the code, design, or implementation...",
-                placeholder="e.g., How can I optimize this? Can I extend it to...?",
-                key="build_followup"
-            )
-            
-            if followup:
-                followup_ph = st.empty()
-                response = stream_response_with_web(
-                    followup_ph,
-                    "Answer this follow-up question:\n\n"
-                    "Original requirement: {req}\n\n"
-                    "Code:\n{code}\n\n"
-                    "Question: {q}\n\n"
-                    "Provide detailed, practical answer with code examples if needed.",
-                    {"req": requirement, "code": generated_code, "q": followup},
-                    include_web_search=use_web_search,
-                    search_query=f"{followup} Python"
-                )
-                add_to_history("user", followup, "🏗️ Build")
-                add_to_history("assistant", response, "🏗️ Build")
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-            show_disclaimer()
-        else:
-            st.warning("❌ Please describe what you want to build!")
+            if st.button("Run Deep Analysis", key="build_deep_run"):
+                show_resource_modal(full_code)
+        
+        show_disclaimer()
 
-# ==================== 2. DEBUG SECTION ====================
+# ==================== DEBUG SECTION ====================
 elif section == " Debug":
-    st.subheader(" Debug - Deep Issue Analysis")
-    st.markdown("Paste broken code and fix your issues")
-
-    code_to_fix = st.text_area(
-        "📝 Your broken code (with error if available):",
-        placeholder="Paste your broken code here...",
-        height=150,
-        key="debug_code"
+    st.subheader(" Debug - Code Analysis & Fixing")
+    st.markdown("Paste code with issues. We'll analyze, identify bugs, and provide fixes.")
+    
+    code_input = st.text_area(
+        "📝 Paste your code:",
+        placeholder="Paste the buggy code here...",
+        height=200,
+        key="debug_input"
     )
+    
+    language = st.selectbox("🔧 Language:", ["Python", "JavaScript", "Java", "C++"], key="debug_lang")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        error_message = st.text_input("Error message (optional):", key="debug_error")
+    with col2:
+        context = st.text_input("Context (what should it do?):", key="debug_context")
+    
+    if st.button("🔍 Analyze & Fix", use_container_width=True, key="debug_submit"):
+        if not code_input.strip():
+            st.error("Please paste code")
+            st.stop()
+        
+        st.subheader("🐛 Issues Found")
+        issues_ph = st.empty()
+        
+        issues_prompt = f"""Analyze this {language} code and identify ALL bugs and issues:
 
-    if st.button("🔧 Analyze & Fix", use_container_width=True, key="debug_btn"):
-        if code_to_fix:
-            with st.spinner("🔍 Deep analysis..."):
-                
-                # Analysis
-                st.markdown('<div class="phase-header">🔍 Issue Analysis</div>', unsafe_allow_html=True)
-                analysis_ph = st.empty()
-                analysis = stream_response_with_web(
-                    analysis_ph,
-                    "DEEP analysis of broken code:\n1. All errors\n2. Root causes\n3. Why they occur\n4. Severity\n5. Related issues\n\nCode:\n{code}",
-                    {"code": code_to_fix},
-                    include_web_search=True,
-                    search_query="Python debugging common errors"
-                )
+CODE:
+```
+{code_input}
+```
 
-                st.write("")
+ERROR (if any): {error_message}
+CONTEXT: {context}
 
-                # Fix
-                st.markdown('<div class="phase-header">✅ Fixed Code</div>', unsafe_allow_html=True)
-                fix_ph = st.empty()
-                fixed_code = stream_response_with_web(
-                    fix_ph,
-                    "Provide completely fixed, production-ready code:\n- Fix all errors\n- Add error handling\n- Add type hints\n- Add docstrings\n- Handle edge cases\n- Return ONLY code\n\nOriginal:\n{code}",
-                    {"code": code_to_fix}
-                )
+List each issue with:
+1. Line number (if applicable)
+2. Description
+3. Severity (Critical/High/Medium/Low)
+4. Root cause
 
-            st.session_state.current_response = {
-                "fixed": fixed_code,
-                "original": code_to_fix,
-                "type": "debug"
-            }
-            add_to_history("user", f"Debug: {code_to_fix[:50]}...", "🐛 Debug")
-            add_to_history("assistant", fixed_code, "🐛 Debug")
+Be thorough."""
+        
+        issues = run_chain(issues_prompt, {})
+        issues_ph.markdown(issues)
+        add_to_history("assistant", issues, "Debug - Issues")
+        
+        st.subheader("✅ Fixed Code")
+        fixed_ph = st.empty()
+        
+        fixed_prompt = f"""Provide the COMPLETE fixed {language} code. Address all issues found.
 
-            st.markdown("---")
-            st.code(fixed_code, language="python")
+ORIGINAL CODE:
+```
+{code_input}
+```
 
-            if st.button("💾 Save", use_container_width=True):
-                save_code("fixed_code", fixed_code, "python")
-                st.success("✅ Saved!")
+ERRORS: {error_message}
 
-            st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            followup = st.text_input("Ask about the fix...", key="debug_followup")
-            if followup:
-                followup_ph = st.empty()
-                stream_response_with_web(followup_ph, "Code:\n{code}\n\nQ: {q}", {"code": fixed_code, "q": followup})
-                add_to_history("user", followup, "🐛 Debug")
-            st.markdown('</div>', unsafe_allow_html=True)
-            show_disclaimer()
-        else:
-            st.warning("❌ Paste code to debug!")
+Return ONLY the complete fixed code, no explanations."""
+        
+        fixed_code = stream_response_with_web(fixed_ph, fixed_prompt, {}, include_web_search=False)
+        add_to_history("assistant", fixed_code, "Debug - Fixed Code")
+        
+        st.divider()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Save Fixed Code", use_container_width=True):
+                name = st.text_input("Filename:", value="fixed_code", key="debug_save")
+                if name:
+                    path = save_code(name, fixed_code, language.lower())
+                    st.success(f"✅ Saved to {path}")
+        
+        with col2:
+            if st.button("📋 Copy Fixed Code", use_container_width=True):
+                st.code(fixed_code, language=language.lower())
+        
+        show_disclaimer()
 
-# ==================== 3. TEST SECTION ====================
+# ==================== TEST SECTION ====================
 elif section == " Test":
-    st.subheader(" Test - Comprehensive Test Generation")
-    st.markdown("Generate deep, comprehensive test cases covering all scenarios")
-
-    code = st.text_area(
-        "📝 Your code:",
-        placeholder="Paste code...",
-        height=150,
-        key="test_code"
+    st.subheader(" Test - Generate Test Cases")
+    st.markdown("Paste code and get comprehensive test cases.")
+    
+    code_input = st.text_area(
+        "📝 Paste your code:",
+        placeholder="Paste code to test...",
+        height=200,
+        key="test_input"
     )
+    
+    language = st.selectbox("🔧 Language:", ["Python", "JavaScript", "Java", "C++"], key="test_lang")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        test_framework = st.text_input("Test framework (pytest, jest, etc.):", value="pytest", key="test_framework")
+    with col2:
+        coverage = st.slider("Target Coverage %:", 50, 100, 80, key="test_coverage")
+    
+    if st.button("🧪 Generate Tests", use_container_width=True, key="test_submit"):
+        if not code_input.strip():
+            st.error("Please paste code")
+            st.stop()
+        
+        st.subheader("📋 Test Cases Generated")
+        tests_ph = st.empty()
+        
+        tests_prompt = f"""Generate comprehensive {test_framework} test cases for this {language} code.
 
-    if st.button("🧪 Generate Tests", use_container_width=True, key="test_btn"):
-        if code:
-            with st.spinner("🧪 Generating tests..."):
-                
-                st.markdown('<div class="phase-header">📋 Test Plan</div>', unsafe_allow_html=True)
-                plan_ph = st.empty()
-                test_plan = stream_response_with_web(
-                    plan_ph,
-                    "Plan comprehensive tests:\n{code}",
-                    {"code": code},
-                    include_web_search=True,
-                    search_query="Python pytest best practices"
-                )
+CODE:
+```
+{code_input}
+```
 
-                st.write("")
+Requirements:
+- Aim for {coverage}% code coverage
+- Include unit tests
+- Include edge case tests
+- Include error handling tests
+- Include integration tests if applicable
+- Use {test_framework} framework/conventions
+- Include setup/teardown if needed
+- Provide complete, runnable test file
 
-                st.markdown('<div class="phase-header">⚙️ Test Code</div>', unsafe_allow_html=True)
-                test_ph = st.empty()
-                test_code = stream_response_with_web(
-                    test_ph,
-                    "Generate production-ready tests:\n- Unit tests\n- Edge cases\n- Error scenarios\n- Integration tests\n\nCode:\n{code}",
-                    {"code": code}
-                )
+Return ONLY complete test code, ready to run."""
+        
+        tests_code = stream_response_with_web(tests_ph, tests_prompt, {}, include_web_search=False)
+        add_to_history("assistant", tests_code, "Test - Generated Tests")
+        
+        st.divider()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Save Tests", use_container_width=True):
+                name = st.text_input("Filename:", value="test_suite", key="test_save")
+                if name:
+                    save_code(name, tests_code, language.lower())
+                    st.success(f"✅ Tests saved")
+        
+        with col2:
+            if st.button("📋 Copy Tests", use_container_width=True):
+                st.code(tests_code, language=language.lower())
+        
+        show_disclaimer()
 
-            st.session_state.current_response = {"tests": test_code, "code": code, "type": "test"}
-            add_to_history("user", f"Test: {code[:50]}...", "✅ Test")
-            add_to_history("assistant", test_code, "✅ Test")
-
-            st.markdown("---")
-            st.code(test_code, language="python")
-
-            if st.button("💾 Save", use_container_width=True):
-                save_code("test_cases", test_code, "python")
-                st.success("✅ Saved!")
-
-            st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            followup = st.text_input("Follow-up...", key="test_followup")
-            if followup:
-                followup_ph = st.empty()
-                stream_response_with_web(followup_ph, "Tests:\n{code}\n\nQ: {q}", {"code": test_code, "q": followup})
-            st.markdown('</div>', unsafe_allow_html=True)
-            show_disclaimer()
-        else:
-            st.warning("❌ Paste code!")
-
-# ==================== 4. OPTIMIZE SECTION ====================
+# ==================== OPTIMIZE SECTION ====================
 elif section == " Optimize":
-    st.subheader(" Optimize - Deep Performance Enhancement")
-
-    code = st.text_area(
-        "📝 Your code:",
-        placeholder="Paste code...",
-        height=150,
-        key="opt_code"
+    st.subheader(" Optimize - Performance Improvement")
+    st.markdown("Get optimization suggestions and improved code.")
+    
+    code_input = st.text_area(
+        "📝 Paste your code:",
+        placeholder="Paste code to optimize...",
+        height=200,
+        key="opt_input"
     )
+    
+    language = st.selectbox("🔧 Language:", ["Python", "JavaScript", "Java", "C++"], key="opt_lang")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        constraint = st.selectbox(
+            "Optimize for:",
+            ["Speed", "Memory", "Readability", "Balanced"],
+            key="opt_constraint"
+        )
+    with col2:
+        current_perf = st.text_input("Current performance (optional):", key="opt_perf")
+    
+    if st.button("⚡ Optimize Code", use_container_width=True, key="opt_submit"):
+        if not code_input.strip():
+            st.error("Please paste code")
+            st.stop()
+        
+        st.subheader("📊 Optimization Analysis")
+        analysis_ph = st.empty()
+        
+        analysis_prompt = f"""Analyze this {language} code for {constraint.lower()} optimization:
 
-    if st.button(" Optimize", use_container_width=True, key="opt_btn"):
-        if code:
-            with st.spinner("🚀 Deep optimization..."):
-                
-                st.markdown('<div class="phase-header">📊 Performance Analysis</div>', unsafe_allow_html=True)
-                analysis_ph = st.empty()
-                analysis = stream_response_with_web(
-                    analysis_ph,
-                    "Detailed optimization analysis:\n{code}",
-                    {"code": code},
-                    include_web_search=True,
-                    search_query="Python performance optimization algorithms"
-                )
+CODE:
+```
+{code_input}
+```
 
-                st.write("")
+Current Performance: {current_perf}
 
-                st.markdown('<div class="phase-header">⚙️ Optimized Code</div>', unsafe_allow_html=True)
-                opt_ph = st.empty()
-                optimized_code = stream_response_with_web(
-                    opt_ph,
-                    "Optimize for performance and memory:\n- Remove bottlenecks\n- Better algorithms\n- Memory efficiency\n- Pythonic patterns\n\nCode:\n{code}",
-                    {"code": code}
-                )
+Provide:
+1. Bottleneck Analysis
+2. Specific Issues
+3. Improvement Opportunities
+4. Expected Impact
 
-            st.session_state.current_response = {"optimized": optimized_code, "original": code, "type": "optimize"}
-            add_to_history("user", f"Optimize: {code[:50]}...", "⚡ Optimize")
-            add_to_history("assistant", optimized_code, "⚡ Optimize")
+Be technical and specific."""
+        
+        analysis = run_chain(analysis_prompt, {})
+        analysis_ph.markdown(analysis)
+        add_to_history("assistant", analysis, "Optimize - Analysis")
+        
+        st.subheader(" Optimized Code")
+        optimized_ph = st.empty()
+        
+        optimized_prompt = f"""Provide completely optimized {language} code for {constraint.lower()}:
 
-            st.markdown("---")
-            st.code(optimized_code, language="python")
+ORIGINAL:
+```
+{code_input}
+```
 
-            if st.button("💾 Save", use_container_width=True):
-                save_code("optimized", optimized_code, "python")
-                st.success("✅ Saved!")
+Optimize for: {constraint}
 
-            st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            followup = st.text_input("Follow-up...", key="opt_followup")
-            if followup:
-                followup_ph = st.empty()
-                stream_response_with_web(followup_ph, "Optimized:\n{code}\n\nQ: {q}", {"code": optimized_code, "q": followup})
-            st.markdown('</div>', unsafe_allow_html=True)
-            show_disclaimer()
-        else:
-            st.warning("❌ Paste code!")
+Return ONLY the complete optimized code with improvements applied."""
+        
+        optimized_code = stream_response_with_web(optimized_ph, optimized_prompt, {}, include_web_search=False)
+        add_to_history("assistant", optimized_code, "Optimize - Code")
+        
+        st.divider()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Save Optimized", use_container_width=True):
+                name = st.text_input("Filename:", value="optimized_code", key="opt_save")
+                if name:
+                    save_code(name, optimized_code, language.lower())
+                    st.success(f"✅ Saved")
+        
+        with col2:
+            if st.button("📋 Copy", use_container_width=True):
+                st.code(optimized_code, language=language.lower())
+        
+        show_disclaimer()
 
-# ==================== 5. EXPLAIN SECTION (IMPROVED) ====================
+# ==================== EXPLAIN SECTION ====================
 elif section == " Explain":
-    st.subheader(" Explain - Deep Learning Content")
-    st.markdown("Learn concepts with detailed explanations and real-world examples")
-
-    topic = st.text_area(
-        "📝 What to explain?",
-        placeholder="e.g., How does recursion work? Explain async/await in Python",
-        height=120,
+    st.subheader(" Explain - Code Understanding")
+    st.markdown("Paste code and get detailed explanations.")
+    
+    code_input = st.text_area(
+        "📝 Paste your code:",
+        placeholder="Paste code to explain...",
+        height=200,
         key="explain_input"
     )
     
-    use_web_search = st.checkbox("🌐 Include latest information and examples", value=True)
+    language = st.selectbox("🔧 Language:", ["Python", "JavaScript", "Java", "C++"], key="explain_lang")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        detail_level = st.selectbox(
+            "Detail Level:",
+            ["Beginner", "Intermediate", "Advanced"],
+            key="explain_detail"
+        )
+    with col2:
+        focus_area = st.text_input("Focus on (optional):", key="explain_focus")
+    
+    if st.button("📖 Explain Code", use_container_width=True, key="explain_submit"):
+        if not code_input.strip():
+            st.error("Please paste code")
+            st.stop()
+        
+        explanation_ph = st.empty()
+        
+        explain_prompt = f"""Explain this {language} code at {detail_level} level:
 
-    if st.button("📖 Explain", use_container_width=True, key="explain_btn"):
-        if topic:
-            with st.spinner("📚 Creating detailed explanation..."):
-                
-                # SINGLE comprehensive explanation with web search
-                st.markdown('<div class="phase-header">🎓 Comprehensive Explanation</div>', unsafe_allow_html=True)
-                explain_ph = st.empty()
-                explanation = stream_response_with_web(
-                    explain_ph,
-                    "Provide COMPREHENSIVE explanation:\n\n{topic}\n\n"
-                    "Include:\n"
-                    "1. Core concept explanation\n"
-                    "2. Multiple detailed examples\n"
-                    "3. Real-world use cases\n"
-                    "4. Visual analogies\n"
-                    "5. Common misconceptions\n"
-                    "6. Step-by-step walkthrough\n"
-                    "7. Pro tips and best practices\n"
-                    "8. Performance considerations\n"
-                    "9. Common pitfalls to avoid\n"
-                    "10. Resources for deeper learning\n\n"
-                    "Be thorough, clear, and engaging.",
-                    {"topic": topic},
-                    include_web_search=use_web_search,
-                    search_query=f"{topic} tutorial best practices"
-                )
+CODE:
+```
+{code_input}
+```
 
-            st.session_state.current_response = {
-                "explanation": explanation,
-                "topic": topic,
-                "type": "explain"
-            }
-            add_to_history("user", f"Explain: {topic[:50]}...", "📚 Explain")
-            add_to_history("assistant", explanation, "📚 Explain")
+Focus: {focus_area if focus_area else 'Overall explanation'}
 
-            st.markdown("---")
-            if use_web_search:
-                st.markdown('<div class="web-search-badge">🌐 Includes latest information</div>', unsafe_allow_html=True)
+Provide:
+1. What it does (high level)
+2. Key components breakdown
+3. How it works (step by step)
+4. Time/Space complexity (if applicable)
+5. Common use cases
+6. Potential improvements
 
-            st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            st.markdown("### 🔄 Ask Follow-up Questions")
-            followup = st.text_input(
-                "Ask anything about this topic...",
-                placeholder="e.g., Can you give another example? How is this related to...?",
-                key="explain_followup"
-            )
-            if followup:
-                followup_ph = st.empty()
-                response = stream_response_with_web(
-                    followup_ph,
-                    "About: {topic}\n\nQuestion: {q}\n\nProvide detailed answer with examples.",
-                    {"topic": topic, "q": followup},
-                    include_web_search=use_web_search,
-                    search_query=f"{topic} {followup}"
-                )
-                add_to_history("user", followup, "📚 Explain")
-                add_to_history("assistant", response, "📚 Explain")
-            st.markdown('</div>', unsafe_allow_html=True)
-            show_disclaimer()
-        else:
-            st.warning("❌ Ask something to explain!")
+Explain clearly for a {detail_level.lower()} programmer."""
+        
+        explanation = stream_response_with_web(explanation_ph, explain_prompt, {}, include_web_search=True, search_query=f"{language} {focus_area}")
+        add_to_history("assistant", explanation, "Explain - Code")
+        
+        show_disclaimer()
 
-# ==================== 6. SEARCH SECTION ====================
+# ==================== SEARCH SECTION ====================
 elif section == " Search":
-    st.subheader(" Search - Deep How-To Solutions")
-    st.markdown("Find comprehensive solutions with code examples")
-
-    problem = st.text_area(
-        "❓ How to...",
-        placeholder="e.g., How to handle large files efficiently? How to implement caching?",
-        height=120,
+    st.subheader(" Search - Web-Based Code Solutions")
+    st.markdown("Search the web for code solutions and best practices.")
+    
+    search_query = st.text_area(
+        "🔍 What do you want to find?",
+        placeholder="Example: How to implement binary search in Python",
+        height=100,
         key="search_input"
     )
-
-    if st.button("🔎 Find Solution", use_container_width=True, key="search_btn"):
-        if problem:
-            with st.spinner("🔍 Finding solution..."):
+    
+    language = st.selectbox("🔧 Language (optional):", ["Any", "Python", "JavaScript", "Java", "C++"], key="search_lang")
+    
+    if st.button("🌐 Search Web", use_container_width=True, key="search_submit"):
+        if not search_query.strip():
+            st.error("Please enter search query")
+            st.stop()
+        
+        full_query = f"{search_query} {language}" if language != "Any" else search_query
+        
+        st.subheader("🔍 Search Results")
+        with st.spinner("Searching..."):
+            search_result = tavily_search(full_query)
+            
+            if search_result.get("success"):
+                st.markdown(search_result.get("answer", "No results"))
                 
-                st.markdown('<div class="phase-header">📋 Complete Solution</div>', unsafe_allow_html=True)
-                solution_ph = st.empty()
-                solution = stream_response_with_web(
-                    solution_ph,
-                    "Provide complete solution:\n\n{prob}\n\n"
-                    "Include:\n"
-                    "1. Problem explanation\n"
-                    "2. Multiple solution approaches\n"
-                    "3. Pros and cons of each\n"
-                    "4. Complete code examples\n"
-                    "5. Performance characteristics\n"
-                    "6. When to use each approach\n"
-                    "7. Common mistakes to avoid\n"
-                    "8. Testing strategies\n\n"
-                    "Be thorough and practical.",
-                    {"prob": problem},
-                    include_web_search=True,
-                    search_query=f"{problem} Python implementation"
-                )
+                if search_result.get("sources"):
+                    with st.expander("📚 Sources"):
+                        st.markdown(search_result.get("sources"))
+                
+                add_to_history("assistant", search_result.get("answer", ""), "Search - Results")
+            else:
+                st.error(f"Search failed: {search_result.get('error')}")
+        
+        show_disclaimer()
 
-            st.session_state.current_response = {"solution": solution, "problem": problem, "type": "search"}
-            add_to_history("user", f"How to: {problem}", "🔍 Search")
-            add_to_history("assistant", solution, "🔍 Search")
-
-            st.markdown("---")
-            st.markdown('<div class="web-search-badge">🌐 Web-enhanced solution</div>', unsafe_allow_html=True)
-
-            st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            followup = st.text_input("Follow-up question...", key="search_followup")
-            if followup:
-                followup_ph = st.empty()
-                stream_response_with_web(followup_ph, "About: {prob}\n\nQ: {q}", {"prob": problem, "q": followup})
-            st.markdown('</div>', unsafe_allow_html=True)
-            show_disclaimer()
-        else:
-            st.warning("❌ Ask something!")
-
-# ==================== 7. ASK SECTION ====================
-else:
-    st.subheader("💬 Ask Anything About Coding")
-    st.markdown("Get comprehensive answers with examples and best practices")
-
+# ==================== ASK SECTION ====================
+elif section == " Ask":
+    st.subheader(" Ask - General AI Assistance")
+    st.markdown("Ask anything about coding, programming concepts, or development.")
+    
     question = st.text_area(
         "❓ Your question:",
-        placeholder="Ask anything about programming...",
-        height=120,
-        key="general_input"
+        placeholder="Ask anything about code, programming, or development...",
+        height=150,
+        key="ask_input"
     )
+    
+    include_web = st.checkbox("🌐 Include web search", value=True, key="ask_web")
+    
+    if st.button("💬 Get Answer", use_container_width=True, key="ask_submit"):
+        if not question.strip():
+            st.error("Please enter a question")
+            st.stop()
+        
+        answer_ph = st.empty()
+        
+        answer_prompt = f"""Answer this programming question comprehensively:
 
-    if st.button(" Ask", use_container_width=True, key="general_btn"):
-        if question:
-            with st.spinner(" Thinking..."):
-                
-                st.markdown('<div class="phase-header">💡 Answer</div>', unsafe_allow_html=True)
-                answer_ph = st.empty()
-                answer = stream_response_with_web(
-                    answer_ph,
-                    "Answer comprehensively:\n\n{q}\n\n"
-                    "Include:\n"
-                    "1. Direct answer\n"
-                    "2. Detailed explanation\n"
-                    "3. Code examples\n"
-                    "4. Use cases\n"
-                    "5. Best practices\n"
-                    "6. Common mistakes\n"
-                    "7. Further resources\n\n"
-                    "Be thorough and clear.",
-                    {"q": question},
-                    include_web_search=True,
-                    search_query=question
-                )
+{question}
 
-            st.session_state.current_response = {"answer": answer, "question": question, "type": "general"}
-            add_to_history("user", question, "💬 Ask")
-            add_to_history("assistant", answer, "💬 Ask")
+Provide:
+1. Direct answer
+2. Explanation
+3. Code examples if applicable
+4. Best practices
+5. Common pitfalls
 
-            st.markdown("---")
-            st.markdown('<div class="web-search-badge">🌐 Web-informed answer</div>', unsafe_allow_html=True)
-
-            st.markdown('<div class="followup-box">', unsafe_allow_html=True)
-            followup = st.text_input("Follow-up...", key="general_followup")
-            if followup:
-                followup_ph = st.empty()
-                stream_response_with_web(followup_ph, "Q: {q}\n\nFollow-up: {follow}", {"q": question, "follow": followup})
-            st.markdown('</div>', unsafe_allow_html=True)
-            show_disclaimer()
-        else:
-            st.warning("❌ Ask something!")
+Be thorough and practical."""
+        
+        answer = stream_response_with_web(
+            answer_ph,
+            answer_prompt,
+            {},
+            include_web_search=include_web,
+            search_query=question if include_web else None
+        )
+        
+        add_to_history("assistant", answer, "Ask - Answer")
+        
+        show_disclaimer()
 
 # ==================== FOOTER ====================
 st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: #666; padding: 20px 0;'>
-    <p Outputs are AI-generated and may contain errors or incomplete implementations. Human review, testing, and validation are required before use in production environments.</p>
+<div style='text-align: center; padding: 20px; color: #999;'>
+    <p>⚡ Sorus AI - Your Coding Assistant</p>
     
-   
 </div>
 """, unsafe_allow_html=True)
