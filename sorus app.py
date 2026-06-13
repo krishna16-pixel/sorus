@@ -614,10 +614,10 @@ st.title("⚡ Sorus AI Pro")
 st.markdown("✨ Production-grade code generation with web intelligence and deep resource analysis")
 st.markdown("---")
 
-# ==================== 1. BUILD SECTION (IMPROVED) ====================
+# ==================== 1. BUILD SECTION (GEMINI AI STYLE) ====================
 if section == "🏗️ Build":
-    st.subheader("🏗️ Build - Intelligent Code Generation")
-    st.markdown("Describe your requirement. I'll research best practices and generate production-ready code.")
+    st.subheader("🏗️ Build - Professional Code Generation")
+    st.markdown("Describe what you want to build. I'll break it down step-by-step, showing you the plan before coding.")
 
     requirement = st.text_area(
         "📝 What do you want to build?",
@@ -628,56 +628,236 @@ if section == "🏗️ Build":
     
     use_web_search = st.checkbox("🌐 Search web for latest best practices", value=True)
 
-    if st.button("🚀 Generate Production Code", use_container_width=True, key="build_btn"):
+    if st.button("🚀 Analyze & Build", use_container_width=True, key="build_btn"):
         if requirement:
-            with st.spinner("⏳ Analyzing requirement and building code..."):
+            with st.spinner("⏳ Deep analysis..."):
                 
-                # SINGLE SMART GENERATION with web research
-                st.markdown('<div class="phase-header">🔨 Building Production Code</div>', unsafe_allow_html=True)
-                code_ph = st.empty()
+                # PHASE 1: REQUIREMENT ANALYSIS
+                st.markdown('<div class="phase-header">📋 Phase 1: Understanding Your Requirement</div>', unsafe_allow_html=True)
+                analysis_ph = st.empty()
                 
-                template = (
-                    "Build PRODUCTION-READY, EXCELLENT code for this requirement:\n"
-                    "{req}\n\n"
-                    "MUST INCLUDE:\n"
-                    "✓ Complete, ready-to-run implementation\n"
-                    "✓ Full type hints and annotations\n"
-                    "✓ Comprehensive docstrings (Google style)\n"
-                    "✓ Error handling and input validation\n"
-                    "✓ Edge case handling\n"
-                    "✓ Clear, descriptive variable names\n"
-                    "✓ Comments explaining complex logic\n"
-                    "✓ Example usage/test cases\n"
-                    "✓ Follow Python best practices\n"
-                    "✓ No placeholders, no TODOs, no incomplete code\n\n"
-                    "CODE QUALITY: Production-grade, tested, optimized\n"
-                    "Return ONLY the complete code."
+                analysis = stream_response_with_web(
+                    analysis_ph,
+                    "Analyze this requirement deeply and provide:\n\n"
+                    "REQUIREMENT:\n{req}\n\n"
+                    "PROVIDE:\n"
+                    "1. WHAT YOU'RE BUILDING\n"
+                    "   - Core purpose\n"
+                    "   - Primary functionality\n"
+                    "   - Expected behavior\n\n"
+                    "2. KEY FEATURES TO IMPLEMENT\n"
+                    "   - List each feature\n"
+                    "   - Explain why it's needed\n"
+                    "   - Prioritize features\n\n"
+                    "3. CONSTRAINTS & REQUIREMENTS\n"
+                    "   - Performance requirements\n"
+                    "   - Size/scale constraints\n"
+                    "   - Compatibility needs\n"
+                    "   - Error handling requirements\n\n"
+                    "4. POTENTIAL CHALLENGES\n"
+                    "   - What could go wrong\n"
+                    "   - Edge cases to handle\n"
+                    "   - Performance bottlenecks\n\n"
+                    "Be clear and structured.",
+                    {"req": requirement},
+                    include_web_search=use_web_search,
+                    search_query=f"{requirement} requirements analysis"
                 )
+                
+                st.write("")
+
+                # PHASE 2: RESOURCES & DEPENDENCIES
+                st.markdown('<div class="phase-header">📚 Phase 2: Resources & Dependencies</div>', unsafe_allow_html=True)
+                resources_ph = st.empty()
+                
+                resources = stream_response_with_web(
+                    resources_ph,
+                    "For building this:\n{req}\n\n"
+                    "PROVIDE:\n"
+                    "1. REQUIRED LIBRARIES\n"
+                    "   - Library name\n"
+                    "   - Version (latest)\n"
+                    "   - Why it's needed\n"
+                    "   - Installation command\n\n"
+                    "2. EXTERNAL RESOURCES\n"
+                    "   - APIs needed\n"
+                    "   - Data sources\n"
+                    "   - Documentation links\n\n"
+                    "3. PYTHON VERSION\n"
+                    "   - Minimum version\n"
+                    "   - Recommended version\n"
+                    "   - Special features needed\n\n"
+                    "4. ENVIRONMENT SETUP\n"
+                    "   - Virtual environment\n"
+                    "   - Configuration files\n"
+                    "   - Setup commands\n\n"
+                    "Format as actionable steps.",
+                    {"req": requirement},
+                    include_web_search=use_web_search,
+                    search_query=f"{requirement} libraries dependencies requirements"
+                )
+                
+                st.write("")
+
+                # PHASE 3: ARCHITECTURE & DESIGN
+                st.markdown('<div class="phase-header">🏛️ Phase 3: Architecture & Design Plan</div>', unsafe_allow_html=True)
+                arch_ph = st.empty()
+                
+                architecture = stream_response_with_web(
+                    arch_ph,
+                    "Design the architecture for:\n{req}\n\n"
+                    "PROVIDE:\n"
+                    "1. OVERALL STRUCTURE\n"
+                    "   - Main components\n"
+                    "   - How they interact\n"
+                    "   - Data flow diagram (text)\n\n"
+                    "2. CLASS/FUNCTION DESIGN\n"
+                    "   - Main classes needed\n"
+                    "   - Primary functions\n"
+                    "   - Method signatures\n"
+                    "   - What each does\n\n"
+                    "3. DATA STRUCTURES\n"
+                    "   - Key data structures\n"
+                    "   - Why chosen\n"
+                    "   - Format/schema\n\n"
+                    "4. ERROR HANDLING STRATEGY\n"
+                    "   - Exception types\n"
+                    "   - Error messages\n"
+                    "   - Recovery strategies\n\n"
+                    "5. TESTING APPROACH\n"
+                    "   - Unit tests needed\n"
+                    "   - Test cases\n"
+                    "   - Edge cases\n\n"
+                    "Be detailed and architectural.",
+                    {"req": requirement},
+                    include_web_search=use_web_search,
+                    search_query=f"{requirement} architecture design patterns best practices"
+                )
+                
+                st.write("")
+
+                # PHASE 4: STEP-BY-STEP TASKS
+                st.markdown('<div class="phase-header">✅ Phase 4: Step-by-Step Implementation Tasks</div>', unsafe_allow_html=True)
+                tasks_ph = st.empty()
+                
+                tasks = stream_response_with_web(
+                    tasks_ph,
+                    "Create detailed step-by-step tasks for:\n{req}\n\n"
+                    "PROVIDE:\n"
+                    "List implementation tasks in order:\n\n"
+                    "STEP 1: [Task Name]\n"
+                    "├─ What to implement\n"
+                    "├─ Expected code size\n"
+                    "├─ Dependencies needed\n"
+                    "├─ How to test\n"
+                    "└─ Success criteria\n\n"
+                    "STEP 2: [Next Task]\n"
+                    "[Continue for all steps...]\n\n"
+                    "Each step should be:\n"
+                    "- Clear and concrete\n"
+                    "- Buildable independently\n"
+                    "- Testable separately\n"
+                    "- ~50-100 lines of code\n\n"
+                    "Include 6-8 logical steps total.",
+                    {"req": requirement},
+                    include_web_search=use_web_search,
+                    search_query=f"{requirement} implementation steps tutorial"
+                )
+                
+                st.write("")
+
+                # PHASE 5: PRODUCTION CODE
+                st.markdown('<div class="phase-header">⚙️ Phase 5: Production Code Generation</div>', unsafe_allow_html=True)
+                code_ph = st.empty()
                 
                 generated_code = stream_response_with_web(
                     code_ph,
-                    template,
+                    "Generate COMPLETE PRODUCTION CODE for:\n{req}\n\n"
+                    "REQUIREMENTS:\n"
+                    "✓ Implement all features from analysis\n"
+                    "✓ Follow architecture design\n"
+                    "✓ Include all steps in logical order\n"
+                    "✓ Full type hints on all functions\n"
+                    "✓ Comprehensive Google-style docstrings\n"
+                    "✓ Complete error handling\n"
+                    "✓ Input validation\n"
+                    "✓ Edge case handling\n"
+                    "✓ Clear variable and function names\n"
+                    "✓ Comments on complex logic\n"
+                    "✓ Multiple working examples\n"
+                    "✓ No TODOs, no placeholders\n"
+                    "✓ Production-ready and tested\n\n"
+                    "CODE STRUCTURE:\n"
+                    "1. Imports (all needed libraries)\n"
+                    "2. Constants and configuration\n"
+                    "3. Utility functions\n"
+                    "4. Main classes/functions\n"
+                    "5. Complete examples\n"
+                    "6. Usage instructions\n\n"
+                    "Return ONLY the complete, working code.\n"
+                    "No explanations, just code.",
                     {"req": requirement},
                     include_web_search=use_web_search,
-                    search_query=f"{requirement} Python best practices"
+                    search_query=f"{requirement} Python implementation"
                 )
+
+            st.write("")
+
+            # PHASE 6: BEST PRACTICES & TIPS
+            st.markdown('<div class="phase-header">💡 Phase 6: Best Practices & Optimization Tips</div>', unsafe_allow_html=True)
+            tips_ph = st.empty()
             
-            # Store ONCE
+            tips = stream_response_with_web(
+                tips_ph,
+                "For this code:\n{code}\n\n"
+                "PROVIDE:\n"
+                "1. PERFORMANCE TIPS\n"
+                "   - Optimization opportunities\n"
+                "   - Time/space complexity\n"
+                "   - Bottlenecks\n\n"
+                "2. SECURITY CONSIDERATIONS\n"
+                "   - Input validation\n"
+                "   - Potential vulnerabilities\n"
+                "   - Safe practices\n\n"
+                "3. TESTING RECOMMENDATIONS\n"
+                "   - What to test\n"
+                "   - Test cases\n"
+                "   - How to verify\n\n"
+                "4. MAINTENANCE TIPS\n"
+                "   - Code clarity\n"
+                "   - Documentation\n"
+                "   - Common issues\n\n"
+                "5. EXTENSION POINTS\n"
+                "   - How to extend\n"
+                "   - Future improvements\n"
+                "   - Additional features\n\n"
+                "Be practical and actionable.",
+                {"code": generated_code},
+                include_web_search=use_web_search,
+                search_query=f"Python code best practices optimization"
+            )
+            
+            # Store response
             st.session_state.current_response = {
                 "code": generated_code,
                 "req": requirement,
+                "analysis": analysis,
+                "resources": resources,
+                "architecture": architecture,
+                "tasks": tasks,
+                "tips": tips,
                 "type": "build"
             }
             
             add_to_history("user", requirement, "🏗️ Build")
             add_to_history("assistant", generated_code, "🏗️ Build")
 
-            # Display results
+            # Display final code
             st.markdown("---")
             if use_web_search:
                 st.markdown('<div class="web-search-badge">🌐 Generated with web research</div>', unsafe_allow_html=True)
             
-            st.markdown("### ✨ Production Code")
+            st.markdown("### 🎯 Final Production Code")
             st.code(generated_code, language="python")
 
             # Action buttons
@@ -686,7 +866,7 @@ if section == "🏗️ Build":
                 if st.button("💾 Save Code", use_container_width=True):
                     filename = requirement[:25].replace(" ", "_")
                     path = save_code(filename, generated_code, "python")
-                    st.success(f"✅ Saved to {filename}")
+                    st.success(f"✅ Saved!")
             
             with col2:
                 if st.button("⚙️ Analyze Resources", use_container_width=True):
@@ -708,8 +888,8 @@ if section == "🏗️ Build":
             st.markdown("### 🔄 Ask Follow-up Questions")
             
             followup = st.text_input(
-                "Ask anything about the code...",
-                placeholder="e.g., How can I optimize this? What edge cases should I handle?",
+                "Ask anything about the code, design, or implementation...",
+                placeholder="e.g., How can I optimize this? Can I extend it to...?",
                 key="build_followup"
             )
             
@@ -717,8 +897,12 @@ if section == "🏗️ Build":
                 followup_ph = st.empty()
                 response = stream_response_with_web(
                     followup_ph,
-                    "Answer this follow-up about the code:\n\nCode:\n{code}\n\nQuestion: {q}\n\nProvide detailed, practical answer with code examples.",
-                    {"code": generated_code, "q": followup},
+                    "Answer this follow-up question:\n\n"
+                    "Original requirement: {req}\n\n"
+                    "Code:\n{code}\n\n"
+                    "Question: {q}\n\n"
+                    "Provide detailed, practical answer with code examples if needed.",
+                    {"req": requirement, "code": generated_code, "q": followup},
                     include_web_search=use_web_search,
                     search_query=f"{followup} Python"
                 )
