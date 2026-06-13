@@ -5,7 +5,7 @@ from pathlib import Path
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 
-# ==================== PAGE CONFIG ====================
+
 st.set_page_config(
     page_title="Sorus AI",
     page_icon="➰",
