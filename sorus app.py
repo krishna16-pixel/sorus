@@ -21,6 +21,16 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
 
+    @keyframes rgbGlow {
+        0% { border-color: rgb(255, 0, 0); }
+        16% { border-color: rgb(255, 127, 0); }
+        33% { border-color: rgb(0, 255, 0); }
+        50% { border-color: rgb(0, 127, 255); }
+        66% { border-color: rgb(75, 0, 130); }
+        83% { border-color: rgb(148, 0, 211); }
+        100% { border-color: rgb(255, 0, 0); }
+    }
+
     .stMarkdown { animation: fadeIn 0.3s ease-in; }
 
     .stButton > button {
@@ -41,12 +51,14 @@ st.markdown("""
 
     .stTextArea textarea {
         border-radius: 8px !important;
-        border: 2px solid #667eea !important;
+        border: 3px solid #667eea !important;
+        animation: rgbGlow 4s infinite !important;
     }
 
     .stTextInput input {
         border-radius: 8px !important;
-        border: 2px solid #667eea !important;
+        border: 3px solid #667eea !important;
+        animation: rgbGlow 4s infinite !important;
     }
 
     .error-badge {
@@ -62,16 +74,36 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
 
-    .warning-badge {
-        display: inline-block;
-        background: #f39c12;
-        color: white;
-        border-radius: 20px;
-        padding: 4px 14px;
-        font-size: 14px;
-        font-weight: 700;
-        margin: 8px 0;
+    /* Hide ALL radio button indicators */
+    .stRadio {
+        display: none !important;
+    }
+
+    /* History and file items styling */
+    .history-item {
+        padding: 8px 12px;
+        margin: 4px 0;
+        border-left: 3px solid #667eea;
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 4px;
+        font-size: 12px;
         cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .history-item:hover {
+        background: rgba(102, 126, 234, 0.2);
+        transform: translateX(4px);
+    }
+
+    .file-item {
+        padding: 8px 12px;
+        margin: 4px 0;
+        border-left: 3px solid #27ae60;
+        background: rgba(39, 174, 96, 0.1);
+        border-radius: 4px;
+        font-size: 12px;
+        word-break: break-all;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -133,7 +165,6 @@ def stream_response(placeholder, template, variables):
     return full_response
 
 def count_errors_in_text(text):
-    """Count numbered items or bullet points as errors/issues"""
     lines = [l.strip() for l in text.split('\n') if l.strip()]
     count = 0
     for line in lines:
@@ -142,7 +173,6 @@ def count_errors_in_text(text):
     return max(count, 1)
 
 def show_errors_badge(lang, code, memory, time_limit):
-    """Fetch errors and show as a badge with expander"""
     error_text = run_chain(
         "For this {lang} code with {mem} memory and {time} time limit:\n\n{code}\n\n"
         "List possible runtime errors, edge cases, and common mistakes as a numbered list. Be concise.",
@@ -165,9 +195,12 @@ st.sidebar.title("🚀 Sorus AI")
 st.sidebar.markdown("Coding Education Agent")
 st.sidebar.markdown("---")
 
-section = st.sidebar.radio(
+# Custom section buttons instead of radio
+sections = ["🏗️ Build", "🐛 Debug", "✅ Test", "⚡ Optimize", "📚 Explain", "🔍 Search", "💬 General"]
+section = st.sidebar.selectbox(
     "📑 Choose Section:",
-    ["🏗️ Build", "🐛 Debug", "✅ Test", "⚡ Optimize", "📚 Explain", "🔍 Search", "💬 General"]
+    sections,
+    key="section_select"
 )
 
 st.sidebar.markdown("---")
@@ -179,6 +212,35 @@ if st.sidebar.button("🗑️ Clear History", use_container_width=True):
                 "explain_result", "search_result", "general_result"]:
         st.session_state[key] = None
     st.rerun()
+
+# Display Chat History
+st.sidebar.markdown("---")
+st.sidebar.subheader("💬 Chat History")
+if st.session_state.chat_history:
+    for i, (role, msg) in enumerate(st.session_state.chat_history):
+        emoji = "👤" if role == "user" else "🤖"
+        preview = msg[:40] + "..." if len(msg) > 40 else msg
+        st.sidebar.markdown(f"""
+        <div class="history-item">
+            {emoji} {preview}
+        </div>
+        """, unsafe_allow_html=True)
+else:
+    st.sidebar.markdown("*No chat history yet*")
+
+# Display Generated Files
+st.sidebar.markdown("---")
+st.sidebar.subheader("💾 Generated Files")
+if st.session_state.generated_files:
+    for file in st.session_state.generated_files:
+        st.sidebar.markdown(f"""
+        <div class="file-item">
+            📄 {file['name']}
+        </div>
+        """, unsafe_allow_html=True)
+        st.sidebar.caption(f"Path: `{file['path']}`")
+else:
+    st.sidebar.markdown("*No files generated yet*")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("**🎓 Educational Purpose Only**\n\nAlways verify generated code!")
@@ -193,34 +255,23 @@ if section == "🏗️ Build":
     st.subheader("🏗️ Build - Generate Code")
     st.markdown("Tell me what you want to build, and I'll generate working code for you!")
 
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        requirement = st.text_area(
-            "📝 What do you want to build?",
-            placeholder="Example: Create a Python function to calculate fibonacci numbers",
-            height=120,
-            key="build_input"
-        )
-    with col2:
-        language = st.selectbox("Language", ["python", "javascript", "java", "cpp", "c"], key="build_lang")
-
-    col3, col4 = st.columns(2)
-    with col3:
-        memory = st.text_input("Memory limit (optional)", "512MB", key="build_mem")
-    with col4:
-        time_limit = st.text_input("Time limit (optional)", "30s", key="build_time")
+    requirement = st.text_area(
+        "📝 What do you want to build?",
+        placeholder="Example: Create a Python function to calculate fibonacci numbers",
+        height=120,
+        key="build_input"
+    )
 
     if st.button("🚀 Generate Code", use_container_width=True, key="build_btn"):
         if requirement:
             st.session_state.chat_history.append(("user", requirement))
             with st.spinner("Generating..."):
                 generated_code = run_chain(
-                    "Create working {lang} code for: {req}\n\nReturn ONLY code without explanation.",
-                    {"lang": language, "req": requirement}
+                    "Create working code for: {req}\n\nReturn ONLY code without explanation.",
+                    {"req": requirement}
                 )
             st.session_state.build_result = {
-                "code": generated_code, "lang": language,
-                "mem": memory, "time": time_limit, "req": requirement
+                "code": generated_code, "req": requirement
             }
             st.session_state.chat_history.append(("assistant", generated_code))
         else:
@@ -230,23 +281,20 @@ if section == "🏗️ Build":
     if st.session_state.build_result:
         r = st.session_state.build_result
         st.markdown("### Generated Code:")
-        st.code(r["code"], language=r["lang"])
+        st.code(r["code"])
 
         if st.button("💾 Save This Code", key="save_build"):
             filename = r["req"][:25].replace(" ", "_")
-            path = save_code(filename, r["code"], r["lang"])
+            path = save_code(filename, r["code"], "python")
             st.success(f"✅ Saved to: `{path}`")
-
-        # Error badge
-        show_errors_badge(r["lang"], r["code"], r["mem"], r["time"])
 
         # Simple explanation
         st.markdown("### 💡 What This Code Does:")
         explain_ph = st.empty()
         stream_response(
             explain_ph,
-            "Explain this {lang} code in very simple words:\n\n{code}",
-            {"lang": r["lang"], "code": r["code"]}
+            "Explain this code in very simple words:\n\n{code}",
+            {"code": r["code"]}
         )
         show_disclaimer()
 
@@ -255,48 +303,39 @@ elif section == "🐛 Debug":
     st.subheader("🐛 Debug - Fix Your Code")
     st.markdown("Paste your broken code and the error message, and I'll fix it!")
 
-    language = st.selectbox("Language", ["python", "javascript", "java", "cpp", "c"], key="debug_lang")
-
     code_to_fix = st.text_area(
-        "📝 Your broken code:",
-        placeholder="Paste your broken code here...",
+        "📝 Your code (with error message in comments):",
+        placeholder="Paste your broken code and error message here...",
         height=150,
         key="debug_code"
     )
 
-    error_message = st.text_area(
-        "❌ Error message:",
-        placeholder="Paste the error message you're getting...",
-        height=80,
-        key="debug_error"
-    )
-
     if st.button("🔧 Fix Code", use_container_width=True, key="debug_btn"):
-        if code_to_fix and error_message:
+        if code_to_fix:
             st.session_state.chat_history.append(("user", f"Debug: {code_to_fix[:50]}..."))
             with st.spinner("Fixing..."):
                 fixed_code = run_chain(
-                    "Fix this {lang} code:\n\nBroken Code:\n{code}\n\nError:\n{err}\n\nReturn ONLY the corrected code.",
-                    {"lang": language, "code": code_to_fix, "err": error_message}
+                    "Fix this code and return ONLY the corrected code:\n\n{code}",
+                    {"code": code_to_fix}
                 )
             st.session_state.debug_result = {
-                "fixed": fixed_code, "lang": language, "err": error_message
+                "fixed": fixed_code
             }
             st.session_state.chat_history.append(("assistant", fixed_code))
         else:
-            st.warning("Please paste both your code AND the error message!")
+            st.warning("Please paste your code!")
 
     if st.session_state.debug_result:
         r = st.session_state.debug_result
         st.markdown("### ✅ Fixed Code:")
-        st.code(r["fixed"], language=r["lang"])
+        st.code(r["fixed"])
 
         st.markdown("### 📝 What Was Wrong?")
         explain_ph = st.empty()
         stream_response(
             explain_ph,
-            "Explain clearly what was wrong and how the fix solves it. Error was: {err}",
-            {"err": r["err"]}
+            "Explain clearly what was wrong with this code and how it was fixed:\n\n{code}",
+            {"code": r["fixed"]}
         )
         show_disclaimer()
 
@@ -304,8 +343,6 @@ elif section == "🐛 Debug":
 elif section == "✅ Test":
     st.subheader("✅ Test - Generate Test Cases")
     st.markdown("Paste your code and I'll create test cases for it!")
-
-    language = st.selectbox("Language", ["python", "javascript", "java", "cpp", "c"], key="test_lang")
 
     code = st.text_area(
         "📝 Your code:",
@@ -319,10 +356,10 @@ elif section == "✅ Test":
             st.session_state.chat_history.append(("user", f"Test: {code[:50]}..."))
             with st.spinner("Generating tests..."):
                 test_code = run_chain(
-                    "Create comprehensive test cases for this {lang} code:\n\n{code}\n\nReturn ONLY test code.",
-                    {"lang": language, "code": code}
+                    "Create comprehensive test cases for this code and return ONLY test code:\n\n{code}",
+                    {"code": code}
                 )
-            st.session_state.test_result = {"tests": test_code, "lang": language, "code": code}
+            st.session_state.test_result = {"tests": test_code, "code": code}
             st.session_state.chat_history.append(("assistant", test_code))
         else:
             st.warning("Please paste your code!")
@@ -330,14 +367,14 @@ elif section == "✅ Test":
     if st.session_state.test_result:
         r = st.session_state.test_result
         st.markdown("### 🧪 Test Cases:")
-        st.code(r["tests"], language=r["lang"])
+        st.code(r["tests"])
 
         st.markdown("### 📖 Test Explanation:")
         explain_ph = st.empty()
         stream_response(
             explain_ph,
-            "Explain each test case and why it's important for this {lang} code:\n\n{code}",
-            {"lang": r["lang"], "code": r["code"]}
+            "Explain each test case and why it's important:\n\n{code}",
+            {"code": r["code"]}
         )
         show_disclaimer()
 
@@ -345,8 +382,6 @@ elif section == "✅ Test":
 elif section == "⚡ Optimize":
     st.subheader("⚡ Optimize - Improve Your Code")
     st.markdown("Make your code faster, cleaner, and better!")
-
-    language = st.selectbox("Language", ["python", "javascript", "java", "cpp", "c"], key="opt_lang")
 
     code = st.text_area(
         "📝 Your code:",
@@ -360,10 +395,10 @@ elif section == "⚡ Optimize":
             st.session_state.chat_history.append(("user", f"Optimize: {code[:50]}..."))
             with st.spinner("Optimizing..."):
                 optimized_code = run_chain(
-                    "Optimize this {lang} code for performance and readability:\n\n{code}\n\nReturn ONLY optimized code.",
-                    {"lang": language, "code": code}
+                    "Optimize this code for performance and readability. Return ONLY optimized code:\n\n{code}",
+                    {"code": code}
                 )
-            st.session_state.opt_result = {"optimized": optimized_code, "lang": language, "original": code}
+            st.session_state.opt_result = {"optimized": optimized_code, "original": code}
             st.session_state.chat_history.append(("assistant", optimized_code))
         else:
             st.warning("Please paste your code!")
@@ -371,14 +406,14 @@ elif section == "⚡ Optimize":
     if st.session_state.opt_result:
         r = st.session_state.opt_result
         st.markdown("### ⚡ Optimized Code:")
-        st.code(r["optimized"], language=r["lang"])
+        st.code(r["optimized"])
 
         st.markdown("### 📊 Improvements Made:")
         improvements_ph = st.empty()
         stream_response(
             improvements_ph,
-            "List the key improvements made to optimize this {lang} code and why each improvement helps:\n\nOriginal:\n{original}\n\nOptimized:\n{optimized}",
-            {"lang": r["lang"], "original": r["original"], "optimized": r["optimized"]}
+            "List the key improvements made and why each helps:\n\nOriginal:\n{original}\n\nOptimized:\n{optimized}",
+            {"original": r["original"], "optimized": r["optimized"]}
         )
         show_disclaimer()
 
@@ -436,7 +471,7 @@ elif section == "🔍 Search":
 
     problem = st.text_area(
         "❓ How to...",
-        placeholder="Examples:\n- How to read a file in Python?\n- How to sort an array?\n- How to handle errors?",
+        placeholder="Examples:\n- How to read a file?\n- How to sort an array?\n- How to handle errors?",
         height=120,
         key="search_input"
     )
