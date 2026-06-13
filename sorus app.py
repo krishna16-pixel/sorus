@@ -7,8 +7,8 @@ from langchain_core.prompts import PromptTemplate
 
 # ==================== PAGE CONFIG ====================
 st.set_page_config(
-    page_title="🚀 Coding Education Agent",
-    page_icon="🤖",
+    page_title="Sorus AI",
+    page_icon="➰",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -198,12 +198,12 @@ def show_disclaimer():
     st.info("⚠️ **Note from Sorus**: I'm an AI and can make mistakes. Always test and verify code before using in production!")
 
 # ==================== SIDEBAR ====================
-st.sidebar.title("🚀 Sorus AI")
-st.sidebar.markdown("Coding Education Agent")
+st.sidebar.title(" Sorus AI")
+st.sidebar.markdown("Agents")
 st.sidebar.markdown("---")
 
 # Custom section buttons instead of radio
-sections = ["🏗️ Build", "🐛 Debug", "✅ Test", "⚡ Optimize", "📚 Explain", "🔍 Search", "💬 General"]
+sections = [" Build", " Debug", " Test", " Optimize", " Explain Complex Code", "web Search", " Sorus Mini"]
 section = st.sidebar.selectbox(
     "📑 Choose Section:",
     sections,
@@ -250,11 +250,11 @@ else:
     st.sidebar.markdown("*No files generated yet*")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("**🎓 Educational Purpose Only**\n\nAlways verify generated code!")
+st.sidebar.markdown("** Educational Purpose Only**\n\nAlways verify generated code!")
 
 # ==================== MAIN TITLE ====================
-st.title("🚀 Intelligent Coding Education Agent")
-st.markdown("**Sorus**: Your AI coding tutor • Learn • Build • Debug • Test")
+st.title("Sorus AI")
+st.markdown(" Outputs are AI-generated and may contain errors or incomplete implementations. Human review, testing, and validation are required before use in production environments.")
 st.markdown("---")
 
 # ==================== 1. BUILD SECTION ====================
