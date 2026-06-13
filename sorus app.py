@@ -21,45 +21,55 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes rgbGlow {
-        0% { border-color: rgb(255, 0, 0); }
-        16% { border-color: rgb(255, 127, 0); }
-        33% { border-color: rgb(0, 255, 0); }
-        50% { border-color: rgb(0, 127, 255); }
-        66% { border-color: rgb(75, 0, 130); }
-        83% { border-color: rgb(148, 0, 211); }
-        100% { border-color: rgb(255, 0, 0); }
-    }
-
-    .stMarkdown { animation: fadeIn 0.3s ease-in; }
-
-    .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding: 10px 20px !important;
-        font-weight: 600 !important;
-        transition: all 0.3s ease !important;
-        width: 100% !important;
-    }
-
-    .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4) !important;
+    @keyframes rgbBorder {
+        0% { 
+            border-color: rgb(255, 0, 0) !important;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6) !important;
+        }
+        14% { 
+            border-color: rgb(255, 127, 0) !important;
+            box-shadow: 0 0 15px rgba(255, 127, 0, 0.6) !important;
+        }
+        28% { 
+            border-color: rgb(0, 255, 0) !important;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.6) !important;
+        }
+        42% { 
+            border-color: rgb(0, 100, 255) !important;
+            box-shadow: 0 0 15px rgba(0, 100, 255, 0.6) !important;
+        }
+        56% { 
+            border-color: rgb(148, 0, 211) !important;
+            box-shadow: 0 0 15px rgba(148, 0, 211, 0.6) !important;
+        }
+        71% { 
+            border-color: rgb(255, 0, 127) !important;
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.6) !important;
+        }
+        85% {
+            border-color: rgb(255, 165, 0) !important;
+            box-shadow: 0 0 15px rgba(255, 165, 0, 0.6) !important;
+        }
+        100% { 
+            border-color: rgb(255, 0, 0) !important;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6) !important;
+        }
     }
 
     .stTextArea textarea {
         border-radius: 8px !important;
-        border: 3px solid #667eea !important;
-        animation: rgbGlow 4s infinite !important;
+        border: 3px solid !important;
+        border-color: rgb(255, 0, 0) !important;
+        animation: rgbBorder 4s linear infinite !important;
     }
 
     .stTextInput input {
         border-radius: 8px !important;
-        border: 3px solid #667eea !important;
-        animation: rgbGlow 4s infinite !important;
+        border: 3px solid !important;
+        border-color: rgb(255, 0, 0) !important;
+        animation: rgbBorder 4s linear infinite !important;
     }
+
 
     .error-badge {
         display: inline-block;
