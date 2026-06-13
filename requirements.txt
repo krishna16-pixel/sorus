@@ -1,7 +1,5 @@
 streamlit
 langchain
-langchain-google-genai
-google-generativeai
+langchain-core
+langchain-groq
 python-dotenv
-requests
-pydantic
