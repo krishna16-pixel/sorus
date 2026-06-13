@@ -614,8 +614,8 @@ else:
     st.sidebar.markdown("*No files generated yet*")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("This coding agent is an AI-powered assistant designed to help with writing, debugging, and improving code across different programming languages. It can generate code snippets, suggest fixes, and explain programming concepts to support faster and more efficient development. The agent is intended to assist developers, not replace them, and works best when its outputs are reviewed and validated before use in real projects.
-")
+st.sidebar.markdown("""This coding agent is an AI-powered assistant designed to help with writing, debugging, and improving code across different programming languages. It can generate code snippets, suggest fixes, and explain programming concepts to support faster and more efficient development. The agent is intended to assist developers, not replace them, and works best when its outputs are reviewed and validated before use in real projects.
+""")
 
 # ==================== MAIN TITLE ====================
 st.title("⚡ Sorus AI ")
