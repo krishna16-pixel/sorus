@@ -21,26 +21,18 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes rainbow {
-        0% { border-color: #ff0000; }
-        16% { border-color: #ff7f00; }
-        33% { border-color: #ffff00; }
-        50% { border-color: #00ff00; }
-        66% { border-color: #0000ff; }
-        83% { border-color: #4b0082; }
-        100% { border-color: #ff0000; }
-    }
-
     .stTextArea textarea {
-        border: 3px solid #ff0000 !important;
+        border: 2px solid transparent !important;
         border-radius: 8px !important;
-        animation: rainbow 4s linear infinite !important;
+        box-shadow: 0 0 15px rgba(102, 126, 234, 0.5), inset 0 0 15px rgba(102, 126, 234, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.5) !important;
     }
 
     .stTextInput input {
-        border: 3px solid #ff0000 !important;
+        border: 2px solid transparent !important;
         border-radius: 8px !important;
-        animation: rainbow 4s linear infinite !important;
+        box-shadow: 0 0 15px rgba(102, 126, 234, 0.5), inset 0 0 15px rgba(102, 126, 234, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.5) !important;
     }
 
 
