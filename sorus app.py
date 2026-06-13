@@ -2,13 +2,13 @@ import os
 import re
 import streamlit as st
 from pathlib import Path
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 
 # ==================== PAGE CONFIG ====================
 st.set_page_config(
-    page_title="Sorus Ai",
-    page_icon="💻",
+    page_title="🚀 Coding Education Agent",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -19,6 +19,24 @@ st.markdown("""
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stMarkdown { animation: fadeIn 0.3s ease-in; }
+
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 10px 20px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4) !important;
     }
 
     .stTextArea textarea {
@@ -44,7 +62,6 @@ st.markdown("""
         border: 1px solid #9ca3af !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
     }
-
 
     .error-badge {
         display: inline-block;
@@ -94,13 +111,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==================== SETUP ====================
-API_KEY = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
+API_KEY = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY"))
 
 if not API_KEY:
-    st.error("❌ Please set GOOGLE_API_KEY in .streamlit/secrets.toml")
+    st.error("❌ Please set GROQ_API_KEY in .streamlit/secrets.toml")
     st.stop()
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-lite", temperature=0.3, api_key=API_KEY)
+llm = ChatGroq(
+    model="mixtral-8x7b-32768",
+    temperature=0.3,
+    api_key=API_KEY
+)
+
 Path("generated_code").mkdir(exist_ok=True)
 
 # Initialize session state
@@ -173,15 +195,15 @@ def show_errors_badge(lang, code, memory, time_limit):
 
 def show_disclaimer():
     st.markdown("---")
-    st.info("Note from Sorus: Sorus is an Ai and can make mistakes.Double check it or Verify the information from trusted sources ")
+    st.info("⚠️ **Note from Sorus**: I'm an AI and can make mistakes. Always test and verify code before using in production!")
 
 # ==================== SIDEBAR ====================
-st.sidebar.title(" Sorus AI")
-st.sidebar.markdown("Agents")
+st.sidebar.title("🚀 Sorus AI")
+st.sidebar.markdown("Coding Education Agent")
 st.sidebar.markdown("---")
 
 # Custom section buttons instead of radio
-sections = [" Build", " Debug", " Test Your code", " Optimize", "Explain Complex code", "Web Search", "Sorus Mini"]
+sections = ["🏗️ Build", "🐛 Debug", "✅ Test", "⚡ Optimize", "📚 Explain", "🔍 Search", "💬 General"]
 section = st.sidebar.selectbox(
     "📑 Choose Section:",
     sections,
@@ -231,8 +253,8 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("**🎓 Educational Purpose Only**\n\nAlways verify generated code!")
 
 # ==================== MAIN TITLE ====================
-st.title("Sorus AI from Lota")
-st.markdown(" Outputs are AI-generated and may contain errors or incomplete implementations. Human review, testing, and validation are required before use in production environments.")
+st.title("🚀 Intelligent Coding Education Agent")
+st.markdown("**Sorus**: Your AI coding tutor • Learn • Build • Debug • Test")
 st.markdown("---")
 
 # ==================== 1. BUILD SECTION ====================
