@@ -22,17 +22,27 @@ st.markdown("""
     }
 
     .stTextArea textarea {
-        border: 2px solid transparent !important;
-        border-radius: 8px !important;
-        box-shadow: 0 0 15px rgba(102, 126, 234, 0.5), inset 0 0 15px rgba(102, 126, 234, 0.2) !important;
-        background-color: rgba(255, 255, 255, 0.5) !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+        font-size: 15px !important;
+    }
+
+    .stTextArea textarea:focus {
+        border: 1px solid #9ca3af !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
     }
 
     .stTextInput input {
-        border: 2px solid transparent !important;
-        border-radius: 8px !important;
-        box-shadow: 0 0 15px rgba(102, 126, 234, 0.5), inset 0 0 15px rgba(102, 126, 234, 0.2) !important;
-        background-color: rgba(255, 255, 255, 0.5) !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 12px !important;
+        padding: 10px 12px !important;
+        font-size: 15px !important;
+    }
+
+    .stTextInput input:focus {
+        border: 1px solid #9ca3af !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
     }
 
 
