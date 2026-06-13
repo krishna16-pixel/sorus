@@ -7,8 +7,8 @@ from langchain_core.prompts import PromptTemplate
 
 # ==================== PAGE CONFIG ====================
 st.set_page_config(
-    page_title="🚀 Coding Education Agent",
-    page_icon="🤖",
+    page_title="Sorus Ai",
+    page_icon="💻",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -100,7 +100,7 @@ if not API_KEY:
     st.error("❌ Please set GOOGLE_API_KEY in .streamlit/secrets.toml")
     st.stop()
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, api_key=API_KEY)
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-lite", temperature=0.3, api_key=API_KEY)
 Path("generated_code").mkdir(exist_ok=True)
 
 # Initialize session state
@@ -173,15 +173,15 @@ def show_errors_badge(lang, code, memory, time_limit):
 
 def show_disclaimer():
     st.markdown("---")
-    st.info("⚠️ **Note from Sorus**: I'm an AI and can make mistakes. Always test and verify code before using in production!")
+    st.info("Note from Sorus: Sorus is an Ai and can make mistakes.Double check it or Verify the information from trusted sources ")
 
 # ==================== SIDEBAR ====================
-st.sidebar.title("🚀 Sorus AI")
-st.sidebar.markdown("Coding Education Agent")
+st.sidebar.title(" Sorus AI")
+st.sidebar.markdown("Agents")
 st.sidebar.markdown("---")
 
 # Custom section buttons instead of radio
-sections = ["🏗️ Build", "🐛 Debug", "✅ Test", "⚡ Optimize", "📚 Explain", "🔍 Search", "💬 General"]
+sections = [" Build", " Debug", " Test Your code", " Optimize", "Explain Complex code", "Web Search", "Sorus Mini"]
 section = st.sidebar.selectbox(
     "📑 Choose Section:",
     sections,
@@ -231,8 +231,8 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("**🎓 Educational Purpose Only**\n\nAlways verify generated code!")
 
 # ==================== MAIN TITLE ====================
-st.title("🚀 Intelligent Coding Education Agent")
-st.markdown("**Sorus**: Your AI coding tutor • Learn • Build • Debug • Test")
+st.title("Sorus AI from Lota")
+st.markdown(" Outputs are AI-generated and may contain errors or incomplete implementations. Human review, testing, and validation are required before use in production environments.")
 st.markdown("---")
 
 # ==================== 1. BUILD SECTION ====================
