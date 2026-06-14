@@ -354,33 +354,33 @@ Return ONLY the complete code - nothing else, no explanations."""
                 st.code(final_code, language=language.lower())
     
     # ==================== FOLLOW-UP SECTION ====================
-    st.markdown("---")
-    if st.session_state.build_code:
-        st.subheader("💬 Ask About This Code")
-        followup = st.text_input(
-            "What do you want to know about the generated code?",
-            key="build_followup_input"
-        )
+   st.markdown("---")
+if st.session_state.build_code:
+    st.subheader("💬 Ask About This Code")
+    followup = st.text_input(
+        "What do you want to know about the generated code?",
+        key="build_followup_input"
+    )
+    
+    if followup and followup.strip():
+        st.markdown("---")
+        st.markdown("### 📝 Answer:")
         
-        if followup and followup.strip():
-            st.markdown("---")
-            st.markdown("### 📝 Answer:")
-            
-            followup_prompt = f"""Answer this question about the code:
-
+        followup_prompt = f"""Answer this question about the code:
+ 
 CODE:
 ```
-{st.session_state.build_code}
+{st.session_state.build_code.replace('{', '{{').replace('}', '}}')}
 ```
-
+ 
 QUESTION: {followup}
-
+ 
 Provide a clear, helpful answer."""
-            
-            run_chain(followup_prompt, {})
-    else:
-        st.info("💡 Generate code first, then ask follow-up questions here!")
-
+        
+        run_chain(followup_prompt, {})
+else:
+    st.info("💡 Generate code first, then ask follow-up questions here!")
+ 
 # ==================== DEBUG SECTION ====================
 elif section == "🐛 Debug":
     st.subheader("🐛 Debug - Fix Broken Code")
@@ -593,29 +593,29 @@ Go through the entire code. Be thorough and clear."""
     
     # ==================== FOLLOW-UP SECTION ====================
     st.markdown("---")
-    if st.session_state.explain_code_content:
-        st.subheader("💬 Ask About This Code")
-        followup = st.text_input("Ask a follow-up question about the code:", key="explain_followup_input")
+if st.session_state.explain_code_content:
+    st.subheader("💬 Ask About This Code")
+    followup = st.text_input("Ask a follow-up question about the code:", key="explain_followup_input")
+    
+    if followup and followup.strip():
+        st.markdown("---")
+        st.markdown("### 📝 Answer:")
         
-        if followup and followup.strip():
-            st.markdown("---")
-            st.markdown("### 📝 Answer:")
-            
-            followup_prompt = f"""Answer this question about the code for {level}:
-
+        followup_prompt = f"""Answer this question about the code for {level}:
+ 
 CODE:
 ```
-{st.session_state.explain_code_content}
+{st.session_state.explain_code_content.replace('{', '{{').replace('}', '}}')}
 ```
-
+ 
 QUESTION: {followup}
-
+ 
 Give a clear, helpful answer suitable for {level}."""
-            
-            run_chain(followup_prompt, {})
-    else:
-        st.info("💡 Explain code first, then ask follow-up questions!")
-
+        
+        run_chain(followup_prompt, {})
+else:
+    st.info("💡 Explain code first, then ask follow-up questions!")
+ 
 # ==================== ASK SECTION ====================
 elif section == "❓ Ask":
     st.subheader("❓ Ask - Ask About Programming")
@@ -675,28 +675,27 @@ Be thorough and beginner-friendly."""
     
     # ==================== FOLLOW-UP SECTION ====================
     st.markdown("---")
-    if st.session_state.ask_response:
-        st.subheader("💬 Ask Follow-up Questions")
-        followup = st.text_input("Ask another question or request clarification:", key="ask_followup_input")
+if st.session_state.ask_response:
+    st.subheader("💬 Ask Follow-up Questions")
+    followup = st.text_input("Ask another question or request clarification:", key="ask_followup_input")
+    
+    if followup and followup.strip():
+        st.markdown("---")
+        st.markdown("### 📝 Follow-up Answer:")
         
-        if followup and followup.strip():
-            st.markdown("---")
-            st.markdown("### 📝 Follow-up Answer:")
-            
-            followup_prompt = f"""Based on this previous answer:
-
-{st.session_state.ask_response[:500]}...
-
+        followup_prompt = f"""Based on this previous answer:
+ 
+{st.session_state.ask_response[:500].replace('{', '{{').replace('}', '}}')}...
+ 
 Now answer this follow-up question:
-
+ 
 {followup}
-
+ 
 Be clear and helpful."""
-            
-            run_chain(followup_prompt, {})
-    else:
-        st.info("💡 Ask a question first!")
-
+        
+        run_chain(followup_prompt, {})
+else:
+    st.info("💡 Ask a question first!")
 # ==================== FOOTER ====================
 st.markdown("---")
 st.markdown("""
