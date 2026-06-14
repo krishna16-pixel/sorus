@@ -355,14 +355,14 @@ Return ONLY the complete code - nothing else, no explanations."""
     
     # ==================== FOLLOW-UP SECTION ====================
    st.markdown("---")
-    if st.session_state.build_code:
+   if st.session_state.build_code:
     st.subheader("💬 Ask About This Code")
     followup = st.text_input(
         "What do you want to know about the generated code?",
         key="build_followup_input"
     )
     
-    if followup and followup.strip():
+   if followup and followup.strip():
         st.markdown("---")
         st.markdown("### 📝 Answer:")
         
@@ -593,7 +593,7 @@ Go through the entire code. Be thorough and clear."""
     
     # ==================== FOLLOW-UP SECTION ====================
     st.markdown("---")
-if st.session_state.explain_code_content:
+    if st.session_state.explain_code_content:
     st.subheader("💬 Ask About This Code")
     followup = st.text_input("Ask a follow-up question about the code:", key="explain_followup_input")
     
@@ -675,7 +675,7 @@ Be thorough and beginner-friendly."""
     
     # ==================== FOLLOW-UP SECTION ====================
     st.markdown("---")
-if st.session_state.ask_response:
+    if st.session_state.ask_response:
     st.subheader("💬 Ask Follow-up Questions")
     followup = st.text_input("Ask another question or request clarification:", key="ask_followup_input")
     
