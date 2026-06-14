@@ -29,12 +29,19 @@ st.markdown("""
         border: 2px solid #667eea !important;
         border-radius: 8px !important;
     }
-    .phase-box {
-        background: rgba(102, 126, 234, 0.1);
-        border-left: 4px solid #667eea;
+    .web-result {
+        background: rgba(52, 152, 219, 0.05);
+        border-left: 4px solid #3498db;
+        padding: 12px;
+        margin: 12px 0;
+        border-radius: 6px;
+    }
+    .followup-response {
+        background: rgba(46, 204, 113, 0.05);
+        border-left: 4px solid #27ae60;
         padding: 15px;
-        border-radius: 8px;
-        margin: 10px 0;
+        margin: 15px 0;
+        border-radius: 6px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -67,6 +74,7 @@ if "ask_response" not in st.session_state:
 def web_search(query):
     """Search web using Tavily API"""
     if not TAVILY_API_KEY:
+        st.warning("⚠️ Tavily API key not set. Web search disabled.")
         return None
     
     try:
@@ -76,19 +84,24 @@ def web_search(query):
             "query": query,
             "include_answer": True,
             "max_results": 5,
+            "search_depth": "advanced"
         }
+        
         response = requests.post(url, json=payload, timeout=10)
         
         if response.status_code == 200:
             data = response.json()
             return {
                 "answer": data.get("answer", ""),
-                "results": data.get("results", [])
+                "results": data.get("results", []),
+                "success": True
             }
-    except:
-        pass
-    
-    return None
+        else:
+            st.warning(f"⚠️ Web search API returned error: {response.status_code}")
+            return None
+    except Exception as e:
+        st.warning(f"⚠️ Web search error: {str(e)}")
+        return None
 
 def format_sources(results):
     """Format search results as sources"""
@@ -96,18 +109,23 @@ def format_sources(results):
         return ""
     sources = "\n### 📚 Sources:\n"
     for i, r in enumerate(results[:3], 1):
-        sources += f"{i}. [{r.get('title', 'Link')}]({r.get('url', '#')})\n"
+        title = r.get('title', 'Link')
+        url = r.get('url', '#')
+        sources += f"{i}. [{title}]({url})\n"
     return sources
 
 # ==================== LLM FUNCTIONS ====================
 def run_chain(template, variables):
-    """Run LLM chain"""
+    """Run LLM chain (non-streaming) - displays result directly"""
     try:
         prompt = PromptTemplate.from_template(template)
         chain = prompt | llm
         response = chain.invoke(variables if variables else {})
-        return response.content if hasattr(response, 'content') else str(response)
+        result = response.content if hasattr(response, 'content') else str(response)
+        st.markdown(result)
+        return result
     except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
         return f"Error: {str(e)}"
 
 def stream_response(placeholder, template, variables):
@@ -127,7 +145,7 @@ def stream_response(placeholder, template, variables):
         placeholder.markdown(full_response)
         return full_response
     except Exception as e:
-        placeholder.error(f"Error: {str(e)}")
+        placeholder.error(f"❌ Error: {str(e)}")
         return f"Error: {str(e)}"
 
 def save_code(filename, code, language):
@@ -177,7 +195,7 @@ if section == "🚀 Build":
             st.error("❌ Please describe what to build!")
             st.stop()
         
-        st.session_state.build_code = None  # Reset
+        st.session_state.build_code = None
         
         # ==================== PHASE 1: INFORMATION ====================
         st.markdown("### 📚 PHASE 1: Understanding Requirements")
@@ -276,18 +294,27 @@ Each task should be specific and actionable."""
         # ==================== PHASE 5: WEB SEARCH ====================
         if use_web:
             st.markdown("### 🌐 PHASE 5: Best Practices from Web")
-            web_ph = st.empty()
             
-            search_query = f"{language} {requirement.split()[0:3]} best practices"
-            search_result = web_search(search_query)
-            
-            if search_result:
-                web_ph.markdown(f"**Web Search:** {search_result.get('answer', 'No results')}")
-                sources = format_sources(search_result.get('results', []))
-                if sources:
-                    st.markdown(sources)
-            else:
-                web_ph.info("⚠️ Web search unavailable, proceeding with generation...")
+            with st.spinner("🔍 Searching for best practices..."):
+                search_query = f"{language} {' '.join(requirement.split()[0:4])} best practices"
+                st.info(f"🔍 Searching: '{search_query}'")
+                
+                search_result = web_search(search_query)
+                
+                if search_result and search_result.get("success"):
+                    answer = search_result.get("answer", "")
+                    results = search_result.get("results", [])
+                    
+                    if answer:
+                        st.markdown(f"<div class='web-result'><strong>📚 Web Results:</strong>\n\n{answer}</div>", unsafe_allow_html=True)
+                    
+                    sources = format_sources(results)
+                    if sources:
+                        st.markdown(sources)
+                    
+                    st.success("✅ Web search completed!")
+                else:
+                    st.warning("⚠️ Web search did not return results. Proceeding with generation...")
         
         # ==================== PHASE 6: FINAL CODE (ONLY ONCE) ====================
         st.markdown("### 💾 PHASE 6: Final Production-Ready Code")
@@ -326,14 +353,19 @@ Return ONLY the complete code - nothing else, no explanations."""
             if st.button("📋 Copy", use_container_width=True, key="build_copy"):
                 st.code(final_code, language=language.lower())
     
-    # ==================== FOLLOW-UP INPUT ====================
+    # ==================== FOLLOW-UP SECTION ====================
     st.markdown("---")
     if st.session_state.build_code:
         st.subheader("💬 Ask About This Code")
-        followup = st.text_input("What do you want to know about the generated code?", key="build_followup")
+        followup = st.text_input(
+            "What do you want to know about the generated code?",
+            key="build_followup_input"
+        )
         
-        if followup:
-            followup_ph = st.empty()
+        if followup and followup.strip():
+            st.markdown("---")
+            st.markdown("### 📝 Answer:")
+            
             followup_prompt = f"""Answer this question about the code:
 
 CODE:
@@ -345,7 +377,7 @@ QUESTION: {followup}
 
 Provide a clear, helpful answer."""
             
-            stream_response(followup_ph, followup_prompt, {})
+            run_chain(followup_prompt, {})
     else:
         st.info("💡 Generate code first, then ask follow-up questions here!")
 
@@ -362,7 +394,6 @@ elif section == "🐛 Debug":
             st.error("❌ Paste some code!")
             st.stop()
         
-        # Find issues
         st.subheader("🐛 Issues Found")
         issues_ph = st.empty()
         
@@ -383,7 +414,6 @@ List each bug:
         issues = run_chain(issues_prompt, {})
         issues_ph.markdown(issues)
         
-        # Generate fixed code
         st.subheader("✅ Fixed Code")
         fixed_ph = st.empty()
         
@@ -397,7 +427,6 @@ Return ONLY the complete fixed code."""
         
         fixed_code = stream_response(fixed_ph, fixed_prompt, {})
         
-        # Save
         st.markdown("---")
         col1, col2 = st.columns(2)
         with col1:
@@ -540,32 +569,38 @@ Format for EACH LINE OR GROUP OF RELATED LINES:
 **Explanation:** [explain what this line does in simple terms for {level}]
 **Why:** [why is this important]
 
-Go through the entire code. Be thorough and clear. Use simple language for beginners."""
+Go through the entire code. Be thorough and clear."""
         
         explanation = stream_response(explain_ph, explain_prompt, {})
         
-        # Web search for additional context
         st.markdown("---")
         if st.checkbox("🌐 Add web best practices?", key="explain_web"):
-            st.info("🔍 Searching for best practices...")
-            search_query = f"{language} {code_input.split()[0:2]} best practices"
-            search_result = web_search(search_query)
-            
-            if search_result:
-                st.markdown("### 💡 Best Practices from Web:")
-                st.markdown(search_result.get('answer', ''))
-                sources = format_sources(search_result.get('results', []))
-                if sources:
-                    st.markdown(sources)
+            with st.spinner("🔍 Searching for best practices..."):
+                search_query = f"{language} {code_input.split()[0:3]} best practices"
+                search_result = web_search(search_query)
+                
+                if search_result and search_result.get("success"):
+                    answer = search_result.get("answer", "")
+                    results = search_result.get("results", [])
+                    
+                    st.markdown("### 💡 Best Practices from Web:")
+                    if answer:
+                        st.markdown(f"<div class='web-result'>{answer}</div>", unsafe_allow_html=True)
+                    
+                    sources = format_sources(results)
+                    if sources:
+                        st.markdown(sources)
     
-    # ==================== FOLLOW-UP INPUT ====================
+    # ==================== FOLLOW-UP SECTION ====================
     st.markdown("---")
     if st.session_state.explain_code_content:
         st.subheader("💬 Ask About This Code")
-        followup = st.text_input("Ask a follow-up question about the code:", key="explain_followup")
+        followup = st.text_input("Ask a follow-up question about the code:", key="explain_followup_input")
         
-        if followup:
-            followup_ph = st.empty()
+        if followup and followup.strip():
+            st.markdown("---")
+            st.markdown("### 📝 Answer:")
+            
             followup_prompt = f"""Answer this question about the code for {level}:
 
 CODE:
@@ -577,7 +612,7 @@ QUESTION: {followup}
 
 Give a clear, helpful answer suitable for {level}."""
             
-            stream_response(followup_ph, followup_prompt, {})
+            run_chain(followup_prompt, {})
     else:
         st.info("💡 Explain code first, then ask follow-up questions!")
 
@@ -598,6 +633,8 @@ elif section == "❓ Ask":
         if not question.strip():
             st.error("❌ Ask a question!")
             st.stop()
+        
+        st.session_state.ask_response = question
         
         st.subheader("💡 Answer")
         answer_ph = st.empty()
@@ -621,27 +658,34 @@ Be thorough and beginner-friendly."""
         # Web search
         if use_web:
             st.markdown("---")
-            st.info("🌐 Searching web for additional resources...")
-            search_result = web_search(question)
-            
-            if search_result:
-                st.markdown("### 📚 Additional Resources:")
-                st.markdown(search_result.get('answer', ''))
-                sources = format_sources(search_result.get('results', []))
-                if sources:
-                    st.markdown(sources)
+            with st.spinner("🌐 Searching web for additional resources..."):
+                search_result = web_search(question)
+                
+                if search_result and search_result.get("success"):
+                    answer_text = search_result.get("answer", "")
+                    results = search_result.get("results", [])
+                    
+                    st.markdown("### 📚 Additional Resources:")
+                    if answer_text:
+                        st.markdown(f"<div class='web-result'>{answer_text}</div>", unsafe_allow_html=True)
+                    
+                    sources = format_sources(results)
+                    if sources:
+                        st.markdown(sources)
     
-    # ==================== FOLLOW-UP INPUT ====================
+    # ==================== FOLLOW-UP SECTION ====================
     st.markdown("---")
     if st.session_state.ask_response:
         st.subheader("💬 Ask Follow-up Questions")
-        followup = st.text_input("Ask another question or request clarification:", key="ask_followup")
+        followup = st.text_input("Ask another question or request clarification:", key="ask_followup_input")
         
-        if followup:
-            followup_ph = st.empty()
+        if followup and followup.strip():
+            st.markdown("---")
+            st.markdown("### 📝 Follow-up Answer:")
+            
             followup_prompt = f"""Based on this previous answer:
 
-{st.session_state.ask_response}
+{st.session_state.ask_response[:500]}...
 
 Now answer this follow-up question:
 
@@ -649,7 +693,7 @@ Now answer this follow-up question:
 
 Be clear and helpful."""
             
-            stream_response(followup_ph, followup_prompt, {})
+            run_chain(followup_prompt, {})
     else:
         st.info("💡 Ask a question first!")
 
