@@ -6,7 +6,6 @@ from langchain_core.prompts import PromptTemplate
 from datetime import datetime
 import requests
 
-# ==================== PAGE SETUP ====================
 st.set_page_config(
     page_title="Sorus AI",
     page_icon="⚡",
@@ -14,7 +13,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==================== CSS ====================
 st.markdown("""
 <style>
     .stButton > button {
@@ -36,17 +34,9 @@ st.markdown("""
         margin: 12px 0;
         border-radius: 6px;
     }
-    .followup-response {
-        background: rgba(46, 204, 113, 0.05);
-        border-left: 4px solid #27ae60;
-        padding: 15px;
-        margin: 15px 0;
-        border-radius: 6px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# ==================== API SETUP ====================
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY"))
 TAVILY_API_KEY = st.secrets.get("TAVILY_API_KEY", os.getenv("TAVILY_API_KEY"))
 
@@ -62,7 +52,6 @@ llm = ChatGroq(
 
 Path("generated_code").mkdir(exist_ok=True)
 
-# ==================== SESSION STATE ====================
 if "build_code" not in st.session_state:
     st.session_state.build_code = None
 if "explain_code_content" not in st.session_state:
@@ -70,9 +59,7 @@ if "explain_code_content" not in st.session_state:
 if "ask_response" not in st.session_state:
     st.session_state.ask_response = None
 
-# ==================== WEB SEARCH ====================
 def web_search(query):
-    """Search web using Tavily API"""
     if not TAVILY_API_KEY:
         st.warning("⚠️ Tavily API key not set. Web search disabled.")
         return None
@@ -104,7 +91,6 @@ def web_search(query):
         return None
 
 def format_sources(results):
-    """Format search results as sources"""
     if not results:
         return ""
     sources = "\n### 📚 Sources:\n"
@@ -114,9 +100,7 @@ def format_sources(results):
         sources += f"{i}. [{title}]({url})\n"
     return sources
 
-# ==================== LLM FUNCTIONS ====================
 def run_chain(template, variables):
-    """Run LLM chain (non-streaming) - displays result directly"""
     try:
         prompt = PromptTemplate.from_template(template)
         chain = prompt | llm
@@ -129,7 +113,6 @@ def run_chain(template, variables):
         return f"Error: {str(e)}"
 
 def stream_response(placeholder, template, variables):
-    """Stream response from LLM"""
     try:
         prompt = PromptTemplate.from_template(template)
         chain = prompt | llm
@@ -149,7 +132,6 @@ def stream_response(placeholder, template, variables):
         return f"Error: {str(e)}"
 
 def save_code(filename, code, language):
-    """Save code to file"""
     ext = {"python": "py", "javascript": "js", "java": "java", "cpp": "cpp"}.get(language.lower(), "txt")
     path = f"generated_code/{filename}.{ext}"
     with open(path, "w") as f:
@@ -157,7 +139,6 @@ def save_code(filename, code, language):
     st.success(f"✅ Saved to: {path}")
     return path
 
-# ==================== SIDEBAR ====================
 st.sidebar.title("⚡ Sorus AI")
 st.sidebar.markdown("---")
 
@@ -167,11 +148,9 @@ section = st.sidebar.selectbox("Choose Section:", sections)
 st.sidebar.markdown("---")
 st.sidebar.markdown("💡 **Note:** Review all AI-generated code before using!")
 
-# ==================== MAIN TITLE ====================
 st.title("⚡ Sorus AI - Coding Assistant")
 st.markdown("---")
 
-# ==================== BUILD SECTION (LIKE MANUS AI) ====================
 if section == "🚀 Build":
     st.subheader("🚀 Build - Generate Code (Professional Flow)")
     
@@ -197,7 +176,6 @@ if section == "🚀 Build":
         
         st.session_state.build_code = None
         
-        # ==================== PHASE 1: INFORMATION ====================
         st.markdown("### 📚 PHASE 1: Understanding Requirements")
         info_ph = st.empty()
         
@@ -224,7 +202,6 @@ Be concise."""
         info = run_chain(info_prompt, {})
         info_ph.markdown(info)
         
-        # ==================== PHASE 2: RESOURCES ====================
         st.markdown("### ⚙️ PHASE 2: Required Resources")
         res_ph = st.empty()
         
@@ -247,7 +224,6 @@ Be minimal and practical."""
         resources = run_chain(res_prompt, {})
         res_ph.markdown(resources)
         
-        # ==================== PHASE 3: WHAT TO DO ====================
         st.markdown("### 📋 PHASE 3: What We'll Do")
         what_ph = st.empty()
         
@@ -271,7 +247,6 @@ What the final code will do"""
         what = run_chain(what_prompt, {})
         what_ph.markdown(what)
         
-        # ==================== PHASE 4: TASKS ====================
         st.markdown("### ✅ PHASE 4: Implementation Tasks")
         tasks_ph = st.empty()
         
@@ -291,7 +266,6 @@ Each task should be specific and actionable."""
         tasks = run_chain(tasks_prompt, {})
         tasks_ph.markdown(tasks)
         
-        # ==================== PHASE 5: WEB SEARCH ====================
         if use_web:
             st.markdown("### 🌐 PHASE 5: Best Practices from Web")
             
@@ -316,7 +290,6 @@ Each task should be specific and actionable."""
                 else:
                     st.warning("⚠️ Web search did not return results. Proceeding with generation...")
         
-        # ==================== PHASE 6: FINAL CODE (ONLY ONCE) ====================
         st.markdown("### 💾 PHASE 6: Final Production-Ready Code")
         code_ph = st.empty()
         
@@ -338,7 +311,6 @@ Return ONLY the complete code - nothing else, no explanations."""
         final_code = stream_response(code_ph, code_prompt, {})
         st.session_state.build_code = final_code
         
-        # ==================== SAVE OPTIONS ====================
         st.markdown("---")
         st.subheader("💾 Save Your Code")
         
@@ -353,35 +325,33 @@ Return ONLY the complete code - nothing else, no explanations."""
             if st.button("📋 Copy", use_container_width=True, key="build_copy"):
                 st.code(final_code, language=language.lower())
     
-    # ==================== FOLLOW-UP SECTION ====================
-   st.markdown("---")
-   if st.session_state.build_code:
-    st.subheader("💬 Ask About This Code")
-    followup = st.text_input(
-        "What do you want to know about the generated code?",
-        key="build_followup_input"
-    )
-    
-   if followup and followup.strip():
-        st.markdown("---")
-        st.markdown("### 📝 Answer:")
+    st.markdown("---")
+    if st.session_state.build_code:
+        st.subheader("💬 Ask About This Code")
+        followup = st.text_input(
+            "What do you want to know about the generated code?",
+            key="build_followup_input"
+        )
         
-        followup_prompt = f"""Answer this question about the code:
- 
+        if followup and followup.strip():
+            st.markdown("---")
+            st.markdown("### 📝 Answer:")
+            
+            followup_prompt = f"""Answer this question about the code:
+
 CODE:
 ```
 {st.session_state.build_code.replace('{', '{{').replace('}', '}}')}
 ```
- 
+
 QUESTION: {followup}
- 
+
 Provide a clear, helpful answer."""
-        
-        run_chain(followup_prompt, {})
-else:
-    st.info("💡 Generate code first, then ask follow-up questions here!")
- 
-# ==================== DEBUG SECTION ====================
+            
+            run_chain(followup_prompt, {})
+    else:
+        st.info("💡 Generate code first, then ask follow-up questions here!")
+
 elif section == "🐛 Debug":
     st.subheader("🐛 Debug - Fix Broken Code")
     
@@ -437,7 +407,6 @@ Return ONLY the complete fixed code."""
             if st.button("📋 Copy", use_container_width=True, key="debug_copy"):
                 st.code(fixed_code, language=language.lower())
 
-# ==================== TEST SECTION ====================
 elif section == "🧪 Test":
     st.subheader("🧪 Test - Generate Test Cases")
     
@@ -480,7 +449,6 @@ Return ONLY complete test code."""
             if st.button("📋 Copy", use_container_width=True, key="test_copy"):
                 st.code(tests_code, language=language.lower())
 
-# ==================== OPTIMIZE SECTION ====================
 elif section == "⚡ Optimize":
     st.subheader("⚡ Optimize - Make Code Faster")
     
@@ -536,7 +504,6 @@ Return ONLY complete optimized code."""
             if st.button("📋 Copy", use_container_width=True, key="opt_copy"):
                 st.code(opt_code, language=language.lower())
 
-# ==================== EXPLAIN SECTION (LINE-BY-LINE) ====================
 elif section == "📖 Explain":
     st.subheader("📖 Explain - Line-by-Line Code Explanation")
     
@@ -591,32 +558,30 @@ Go through the entire code. Be thorough and clear."""
                     if sources:
                         st.markdown(sources)
     
-    # ==================== FOLLOW-UP SECTION ====================
     st.markdown("---")
     if st.session_state.explain_code_content:
-    st.subheader("💬 Ask About This Code")
-    followup = st.text_input("Ask a follow-up question about the code:", key="explain_followup_input")
-    
-    if followup and followup.strip():
-        st.markdown("---")
-        st.markdown("### 📝 Answer:")
+        st.subheader("💬 Ask About This Code")
+        followup = st.text_input("Ask a follow-up question about the code:", key="explain_followup_input")
         
-        followup_prompt = f"""Answer this question about the code for {level}:
- 
+        if followup and followup.strip():
+            st.markdown("---")
+            st.markdown("### 📝 Answer:")
+            
+            followup_prompt = f"""Answer this question about the code for {level}:
+
 CODE:
 ```
 {st.session_state.explain_code_content.replace('{', '{{').replace('}', '}}')}
 ```
- 
+
 QUESTION: {followup}
- 
+
 Give a clear, helpful answer suitable for {level}."""
-        
-        run_chain(followup_prompt, {})
-else:
-    st.info("💡 Explain code first, then ask follow-up questions!")
- 
-# ==================== ASK SECTION ====================
+            
+            run_chain(followup_prompt, {})
+    else:
+        st.info("💡 Explain code first, then ask follow-up questions!")
+
 elif section == "❓ Ask":
     st.subheader("❓ Ask - Ask About Programming")
     
@@ -655,7 +620,6 @@ Be thorough and beginner-friendly."""
         answer = stream_response(answer_ph, answer_prompt, {})
         st.session_state.ask_response = answer
         
-        # Web search
         if use_web:
             st.markdown("---")
             with st.spinner("🌐 Searching web for additional resources..."):
@@ -673,30 +637,29 @@ Be thorough and beginner-friendly."""
                     if sources:
                         st.markdown(sources)
     
-    # ==================== FOLLOW-UP SECTION ====================
     st.markdown("---")
     if st.session_state.ask_response:
-    st.subheader("💬 Ask Follow-up Questions")
-    followup = st.text_input("Ask another question or request clarification:", key="ask_followup_input")
-    
-    if followup and followup.strip():
-        st.markdown("---")
-        st.markdown("### 📝 Follow-up Answer:")
+        st.subheader("💬 Ask Follow-up Questions")
+        followup = st.text_input("Ask another question or request clarification:", key="ask_followup_input")
         
-        followup_prompt = f"""Based on this previous answer:
- 
+        if followup and followup.strip():
+            st.markdown("---")
+            st.markdown("### 📝 Follow-up Answer:")
+            
+            followup_prompt = f"""Based on this previous answer:
+
 {st.session_state.ask_response[:500].replace('{', '{{').replace('}', '}}')}...
- 
+
 Now answer this follow-up question:
- 
+
 {followup}
- 
+
 Be clear and helpful."""
-        
-        run_chain(followup_prompt, {})
-else:
-    st.info("💡 Ask a question first!")
-# ==================== FOOTER ====================
+            
+            run_chain(followup_prompt, {})
+    else:
+        st.info("💡 Ask a question first!")
+
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; padding: 20px; color: #999;'>
