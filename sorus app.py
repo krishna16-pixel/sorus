@@ -355,7 +355,7 @@ Return ONLY the complete code - nothing else, no explanations."""
     
     # ==================== FOLLOW-UP SECTION ====================
    st.markdown("---")
-if st.session_state.build_code:
+    if st.session_state.build_code:
     st.subheader("💬 Ask About This Code")
     followup = st.text_input(
         "What do you want to know about the generated code?",
