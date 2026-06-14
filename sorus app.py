@@ -71,7 +71,7 @@ def web_search(query):
             "query": query,
             "include_answer": True,
             "max_results": 5,
-            "search_depth": "advanced"
+            "search_depth": "basic"
         }
         
         response = requests.post(url, json=payload, timeout=10)
@@ -83,8 +83,11 @@ def web_search(query):
                 "results": data.get("results", []),
                 "success": True
             }
+        elif response.status_code == 404:
+            st.warning("⚠️ Web search API endpoint not found. Check Tavily API key.")
+            return None
         else:
-            st.warning(f"⚠️ Web search API returned error: {response.status_code}")
+            st.warning(f"⚠️ Web search error: {response.status_code}")
             return None
     except Exception as e:
         st.warning(f"⚠️ Web search error: {str(e)}")
@@ -179,7 +182,7 @@ if section == "🚀 Build":
         st.markdown("### 📚 PHASE 1: Understanding Requirements")
         info_ph = st.empty()
         
-        info_prompt = f"""Analyze this requirement and provide ONLY:
+        info_prompt = """Analyze this requirement and provide ONLY:
 
 REQUIREMENT: {requirement}
 LANGUAGE: {language}
@@ -199,13 +202,13 @@ Format exactly:
 
 Be concise."""
         
-        info = run_chain(info_prompt, {})
+        info = run_chain(info_prompt, {"requirement": requirement, "language": language})
         info_ph.markdown(info)
         
         st.markdown("### ⚙️ PHASE 2: Required Resources")
         res_ph = st.empty()
         
-        res_prompt = f"""What resources are needed for this {language} code?
+        res_prompt = """What resources are needed for this {language} code?
 
 REQUIREMENT: {requirement}
 
@@ -221,13 +224,13 @@ Format exactly:
 
 Be minimal and practical."""
         
-        resources = run_chain(res_prompt, {})
+        resources = run_chain(res_prompt, {"requirement": requirement, "language": language})
         res_ph.markdown(resources)
         
         st.markdown("### 📋 PHASE 3: What We'll Do")
         what_ph = st.empty()
         
-        what_prompt = f"""For this requirement, explain the approach:
+        what_prompt = """For this requirement, explain the approach:
 
 REQUIREMENT: {requirement}
 LANGUAGE: {language}
@@ -244,13 +247,13 @@ Explain in 3-4 sentences what we'll do
 **OUTPUT:**
 What the final code will do"""
         
-        what = run_chain(what_prompt, {})
+        what = run_chain(what_prompt, {"requirement": requirement, "language": language})
         what_ph.markdown(what)
         
         st.markdown("### ✅ PHASE 4: Implementation Tasks")
         tasks_ph = st.empty()
         
-        tasks_prompt = f"""Break down the implementation into tasks:
+        tasks_prompt = """Break down the implementation into tasks:
 
 REQUIREMENT: {requirement}
 LANGUAGE: {language}
@@ -263,7 +266,7 @@ Format:
 
 Each task should be specific and actionable."""
         
-        tasks = run_chain(tasks_prompt, {})
+        tasks = run_chain(tasks_prompt, {"requirement": requirement, "language": language})
         tasks_ph.markdown(tasks)
         
         if use_web:
@@ -293,7 +296,7 @@ Each task should be specific and actionable."""
         st.markdown("### 💾 PHASE 6: Final Production-Ready Code")
         code_ph = st.empty()
         
-        code_prompt = f"""Generate ONE complete, production-ready {language} solution.
+        code_prompt = """Generate ONE complete, production-ready {language} solution.
 
 REQUIREMENT: {requirement}
 
@@ -308,7 +311,7 @@ MUST INCLUDE:
 
 Return ONLY the complete code - nothing else, no explanations."""
         
-        final_code = stream_response(code_ph, code_prompt, {})
+        final_code = stream_response(code_ph, code_prompt, {"requirement": requirement, "language": language})
         st.session_state.build_code = final_code
         
         st.markdown("---")
@@ -337,18 +340,16 @@ Return ONLY the complete code - nothing else, no explanations."""
             st.markdown("---")
             st.markdown("### 📝 Answer:")
             
-            followup_prompt = f"""Answer this question about the code:
+            followup_prompt = """Answer this question about the code:
 
 CODE:
-```
-{st.session_state.build_code.replace('{', '{{').replace('}', '}}')}
-```
+{code}
 
-QUESTION: {followup}
+QUESTION: {question}
 
 Provide a clear, helpful answer."""
             
-            run_chain(followup_prompt, {})
+            run_chain(followup_prompt, {"code": st.session_state.build_code, "question": followup})
     else:
         st.info("💡 Generate code first, then ask follow-up questions here!")
 
@@ -367,13 +368,12 @@ elif section == "🐛 Debug":
         st.subheader("🐛 Issues Found")
         issues_ph = st.empty()
         
-        issues_prompt = f"""Find ALL bugs in this {language} code:
+        issues_prompt = """Find ALL bugs in this {language} code:
 
-```
-{code_input}
-```
+CODE:
+{code}
 
-Error: {error_msg if error_msg else 'None'}
+Error: {error}
 
 List each bug:
 1. **What's wrong:** [description]
@@ -381,21 +381,20 @@ List each bug:
 3. **Severity:** [Critical/High/Medium]
 4. **How to fix:** [solution]"""
         
-        issues = run_chain(issues_prompt, {})
+        issues = run_chain(issues_prompt, {"language": language, "code": code_input, "error": error_msg if error_msg else "None"})
         issues_ph.markdown(issues)
         
         st.subheader("✅ Fixed Code")
         fixed_ph = st.empty()
         
-        fixed_prompt = f"""Fix ALL bugs in this {language} code:
+        fixed_prompt = """Fix ALL bugs in this {language} code:
 
-```
-{code_input}
-```
+CODE:
+{code}
 
-Return ONLY the complete fixed code."""
+Return ONLY the complete fixed code, no explanations."""
         
-        fixed_code = stream_response(fixed_ph, fixed_prompt, {})
+        fixed_code = stream_response(fixed_ph, fixed_prompt, {"language": language, "code": code_input})
         
         st.markdown("---")
         col1, col2 = st.columns(2)
@@ -422,11 +421,10 @@ elif section == "🧪 Test":
         st.subheader("📝 Test Cases")
         tests_ph = st.empty()
         
-        tests_prompt = f"""Generate complete {framework} test cases for this {language} code:
+        tests_prompt = """Generate complete {framework} test cases for this {language} code:
 
-```
-{code_input}
-```
+CODE:
+{code}
 
 Include:
 - Normal case tests
@@ -435,9 +433,9 @@ Include:
 - Clear comments
 - Ready to run
 
-Return ONLY complete test code."""
+Return ONLY complete test code, no explanations."""
         
-        tests_code = stream_response(tests_ph, tests_prompt, {})
+        tests_code = stream_response(tests_ph, tests_prompt, {"framework": framework, "language": language, "code": code_input})
         
         st.markdown("---")
         col1, col2 = st.columns(2)
@@ -464,11 +462,10 @@ elif section == "⚡ Optimize":
         st.subheader("📊 Analysis")
         analysis_ph = st.empty()
         
-        analysis_prompt = f"""Analyze this {language} code and suggest optimizations:
+        analysis_prompt = """Analyze this {language} code and suggest optimizations:
 
-```
-{code_input}
-```
+CODE:
+{code}
 
 Optimize for: {goal}
 
@@ -478,21 +475,20 @@ Explain:
 3. **Solutions:** How to improve
 4. **Impact:** Expected improvement"""
         
-        analysis = run_chain(analysis_prompt, {})
+        analysis = run_chain(analysis_prompt, {"language": language, "code": code_input, "goal": goal})
         analysis_ph.markdown(analysis)
         
         st.subheader("✨ Optimized Code")
         opt_ph = st.empty()
         
-        opt_prompt = f"""Create optimized {language} code for {goal}:
+        opt_prompt = """Create optimized {language} code for {goal}:
 
-```
-{code_input}
-```
+CODE:
+{code}
 
-Return ONLY complete optimized code."""
+Return ONLY complete optimized code, no explanations."""
         
-        opt_code = stream_response(opt_ph, opt_prompt, {})
+        opt_code = stream_response(opt_ph, opt_prompt, {"language": language, "code": code_input, "goal": goal})
         
         st.markdown("---")
         col1, col2 = st.columns(2)
@@ -521,29 +517,27 @@ elif section == "📖 Explain":
         st.subheader("📖 Line-by-Line Explanation")
         explain_ph = st.empty()
         
-        explain_prompt = f"""Explain this {language} code line by line for {level}:
+        explain_prompt = """Explain this {language} code line by line for {level}:
 
-```
-{code_input}
-```
+CODE:
+{code}
 
 Format for EACH LINE OR GROUP OF RELATED LINES:
 
 **Line X-Y:**
-```
 [show the actual code line]
-```
+
 **Explanation:** [explain what this line does in simple terms for {level}]
 **Why:** [why is this important]
 
 Go through the entire code. Be thorough and clear."""
         
-        explanation = stream_response(explain_ph, explain_prompt, {})
+        explanation = stream_response(explain_ph, explain_prompt, {"language": language, "level": level, "code": code_input})
         
         st.markdown("---")
         if st.checkbox("🌐 Add web best practices?", key="explain_web"):
             with st.spinner("🔍 Searching for best practices..."):
-                search_query = f"{language} {code_input.split()[0:3]} best practices"
+                search_query = f"{language} best practices"
                 search_result = web_search(search_query)
                 
                 if search_result and search_result.get("success"):
@@ -567,18 +561,16 @@ Go through the entire code. Be thorough and clear."""
             st.markdown("---")
             st.markdown("### 📝 Answer:")
             
-            followup_prompt = f"""Answer this question about the code for {level}:
+            followup_prompt = """Answer this question about the code for {level}:
 
 CODE:
-```
-{st.session_state.explain_code_content.replace('{', '{{').replace('}', '}}')}
-```
+{code}
 
-QUESTION: {followup}
+QUESTION: {question}
 
 Give a clear, helpful answer suitable for {level}."""
             
-            run_chain(followup_prompt, {})
+            run_chain(followup_prompt, {"level": st.session_state.explain_code_content, "code": st.session_state.explain_code_content, "question": followup, "level": level})
     else:
         st.info("💡 Explain code first, then ask follow-up questions!")
 
@@ -604,7 +596,7 @@ elif section == "❓ Ask":
         st.subheader("💡 Answer")
         answer_ph = st.empty()
         
-        answer_prompt = f"""Answer this programming question:
+        answer_prompt = """Answer this programming question:
 
 {question}
 
@@ -617,7 +609,7 @@ Include:
 
 Be thorough and beginner-friendly."""
         
-        answer = stream_response(answer_ph, answer_prompt, {})
+        answer = stream_response(answer_ph, answer_prompt, {"question": question})
         st.session_state.ask_response = answer
         
         if use_web:
@@ -646,17 +638,17 @@ Be thorough and beginner-friendly."""
             st.markdown("---")
             st.markdown("### 📝 Follow-up Answer:")
             
-            followup_prompt = f"""Based on this previous answer:
+            followup_prompt = """Based on this previous answer:
 
-{st.session_state.ask_response[:500].replace('{', '{{').replace('}', '}}')}...
+{previous_answer}
 
 Now answer this follow-up question:
 
-{followup}
+{question}
 
 Be clear and helpful."""
             
-            run_chain(followup_prompt, {})
+            run_chain(followup_prompt, {"previous_answer": st.session_state.ask_response[:500], "question": followup})
     else:
         st.info("💡 Ask a question first!")
 
