@@ -17,96 +17,141 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Dark theme CSS
+# ChatGPT-style dark theme CSS
 st.markdown("""
 <style>
     * {
-        color: #e0e0e0;
+        color: #ececec;
     }
     
     body, .stApp {
-        background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-        color: #e0e0e0;
+        background-color: #0d0d0d;
+        color: #ececec;
     }
     
     .stSidebar {
-        background: #0f1629;
-        border-right: 1px solid #2a3a4a;
+        background-color: #0d0d0d;
+        border-right: 1px solid #2a2a2a;
+    }
+    
+    [data-testid="stMainBlockContainer"] {
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
     
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background-color: #10a37f !important;
         color: white !important;
         border: none !important;
-        border-radius: 8px !important;
-        padding: 10px 20px !important;
-        font-weight: 600 !important;
-        transition: all 0.3s ease;
+        border-radius: 6px !important;
+        padding: 8px 16px !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease;
     }
     
     .stButton > button:hover {
-        box-shadow: 0 0 20px rgba(102, 126, 234, 0.4) !important;
+        background-color: #0d9370 !important;
     }
     
     .stTextArea textarea, .stTextInput input {
-        background: #1a2a3a !important;
-        color: #e0e0e0 !important;
-        border: 1px solid #667eea !important;
-        border-radius: 8px !important;
+        background-color: #343541 !important;
+        color: #ececec !important;
+        border: 1px solid #565869 !important;
+        border-radius: 6px !important;
     }
     
-    .stSelectbox, .stNumberInput, .stRadio {
-        color: #e0e0e0;
-    }
-    
-    .stSelectbox > div > div, .stSelectbox > div select {
-        background: #1a2a3a !important;
-        color: #e0e0e0 !important;
-        border: 1px solid #667eea !important;
-    }
-    
-    .chat-message {
-        background: #1a2a3a;
-        border-left: 4px solid #667eea;
-        padding: 12px;
-        margin: 12px 0;
-        border-radius: 6px;
-        color: #e0e0e0;
-    }
-    
-    .chat-message.user {
-        border-left-color: #764ba2;
-        background: #1f2a3a;
-    }
-    
-    .chat-message.assistant {
-        border-left-color: #667eea;
-        background: #1a2a3a;
-    }
-    
-    .code-block {
-        background: #0a0e27 !important;
-        border: 1px solid #667eea !important;
-        border-radius: 8px !important;
+    .stTextArea textarea::placeholder, .stTextInput input::placeholder {
+        color: #8e8ea0;
     }
     
     h1, h2, h3, h4, h5, h6 {
-        color: #e0e0e0;
+        color: #ececec;
+    }
+    
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .user-message {
+        background: transparent;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 6px;
+        text-align: right;
+    }
+    
+    .user-text {
+        background-color: #10a37f;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        display: inline-block;
+        max-width: 80%;
+        text-align: left;
+    }
+    
+    .assistant-message {
+        background: transparent;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 6px;
+        text-align: left;
+    }
+    
+    .assistant-text {
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        display: inline-block;
+        max-width: 90%;
     }
     
     .sidebar-history {
-        background: #1a2a3a;
-        padding: 8px;
+        background-color: #2a2a2a;
+        padding: 10px;
         margin: 8px 0;
         border-radius: 6px;
-        border-left: 3px solid #667eea;
         cursor: pointer;
         transition: all 0.2s ease;
     }
     
     .sidebar-history:hover {
-        background: #252f3a;
-        box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        background-color: #3a3a3a;
+    }
+    
+    .input-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #0d0d0d;
+        border-top: 1px solid #2a2a2a;
+        padding: 1rem;
+        z-index: 100;
+    }
+    
+    .task-modal {
+        background-color: #343541;
+        border: 1px solid #565869;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .task-button {
+        background-color: #2a2a2a !important;
+        color: #ececec !important;
+        border: 1px solid #565869 !important;
+        border-radius: 6px !important;
+        padding: 10px 16px !important;
+        margin: 8px !important;
+        text-align: left !important;
+        transition: all 0.2s ease;
+    }
+    
+    .task-button:hover {
+        background-color: #3a3a3a !important;
+        border-color: #10a37f !important;
     }
 </style>
 """, unsafe_allow_html=True)
