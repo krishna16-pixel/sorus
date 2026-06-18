@@ -1,10 +1,14 @@
 import os
+import json
 import streamlit as st
 from pathlib import Path
+from datetime import datetime
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
-from datetime import datetime
-import requests
+
+# ============================================================================
+# CONFIG & SETUP
+# ============================================================================
 
 st.set_page_config(
     page_title="Sorus AI",
@@ -13,8 +17,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Dark theme CSS
 st.markdown("""
 <style>
+    * {
+        color: #e0e0e0;
+    }
+    
+    body, .stApp {
+        background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+        color: #e0e0e0;
+    }
+    
+    .stSidebar {
+        background: #0f1629;
+        border-right: 1px solid #2a3a4a;
+    }
+    
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         color: white !important;
@@ -22,23 +41,111 @@ st.markdown("""
         border-radius: 8px !important;
         padding: 10px 20px !important;
         font-weight: 600 !important;
+        transition: all 0.3s ease;
     }
+    
+    .stButton > button:hover {
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.4) !important;
+    }
+    
     .stTextArea textarea, .stTextInput input {
-        border: 2px solid #667eea !important;
+        background: #1a2a3a !important;
+        color: #e0e0e0 !important;
+        border: 1px solid #667eea !important;
         border-radius: 8px !important;
     }
-    .web-result {
-        background: rgba(52, 152, 219, 0.05);
-        border-left: 4px solid #3498db;
+    
+    .stSelectbox, .stNumberInput, .stRadio {
+        color: #e0e0e0;
+    }
+    
+    .stSelectbox > div > div, .stSelectbox > div select {
+        background: #1a2a3a !important;
+        color: #e0e0e0 !important;
+        border: 1px solid #667eea !important;
+    }
+    
+    .chat-message {
+        background: #1a2a3a;
+        border-left: 4px solid #667eea;
         padding: 12px;
         margin: 12px 0;
         border-radius: 6px;
+        color: #e0e0e0;
+    }
+    
+    .chat-message.user {
+        border-left-color: #764ba2;
+        background: #1f2a3a;
+    }
+    
+    .chat-message.assistant {
+        border-left-color: #667eea;
+        background: #1a2a3a;
+    }
+    
+    .code-block {
+        background: #0a0e27 !important;
+        border: 1px solid #667eea !important;
+        border-radius: 8px !important;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        color: #e0e0e0;
+    }
+    
+    .sidebar-history {
+        background: #1a2a3a;
+        padding: 8px;
+        margin: 8px 0;
+        border-radius: 6px;
+        border-left: 3px solid #667eea;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .sidebar-history:hover {
+        background: #252f3a;
+        box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
     }
 </style>
 """, unsafe_allow_html=True)
 
+# ============================================================================
+# CONSTANTS & SYSTEM PROMPT
+# ============================================================================
+
+SYSTEM_PROMPT = """You are Sorus AI, an expert coding assistant with deep knowledge of software engineering, algorithms, best practices, and multiple programming paradigms.
+
+Your role:
+- Provide clear, production-ready solutions
+- Include comprehensive explanations
+- Generate clean, well-commented code
+- Handle edge cases properly
+- Offer practical examples
+
+Guidelines:
+- Be concise but thorough
+- Format code with proper syntax highlighting
+- Always consider performance and readability
+- Provide step-by-step guidance
+- Suggest improvements and alternatives
+- Use real-world examples when helpful"""
+
+TASK_TYPES = {
+    "🚀 Build": "Generate new code from requirements",
+    "🐛 Debug": "Fix and identify bugs in code",
+    "🧪 Test": "Generate test cases",
+    "⚡ Optimize": "Improve performance and efficiency",
+    "📖 Explain": "Understand code line-by-line",
+    "💡 Ask": "General programming questions"
+}
+
+# ============================================================================
+# INIT LLM
+# ============================================================================
+
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY"))
-TAVILY_API_KEY = st.secrets.get("TAVILY_API_KEY", os.getenv("TAVILY_API_KEY"))
 
 if not GROQ_API_KEY:
     st.error("❌ Please set GROQ_API_KEY")
@@ -50,78 +157,180 @@ llm = ChatGroq(
     api_key=GROQ_API_KEY
 )
 
+Path("conversations").mkdir(exist_ok=True)
 Path("generated_code").mkdir(exist_ok=True)
 
-if "build_code" not in st.session_state:
-    st.session_state.build_code = None
-if "explain_code_content" not in st.session_state:
-    st.session_state.explain_code_content = None
-if "ask_response" not in st.session_state:
-    st.session_state.ask_response = None
+# ============================================================================
+# SESSION STATE
+# ============================================================================
 
-def web_search(query):
-    if not TAVILY_API_KEY:
-        st.warning("⚠️ Tavily API key not set. Web search disabled.")
-        return None
+if "conversations" not in st.session_state:
+    st.session_state.conversations = {}
+    load_conversations()
+
+if "current_chat_id" not in st.session_state:
+    st.session_state.current_chat_id = None
+
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = []
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+def generate_chat_id():
+    """Generate unique chat ID"""
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+def save_conversation():
+    """Save current conversation to disk"""
+    if st.session_state.current_chat_id:
+        chat_file = f"conversations/{st.session_state.current_chat_id}.json"
+        with open(chat_file, "w") as f:
+            json.dump(st.session_state.chat_messages, f)
+
+def load_conversations():
+    """Load all saved conversations"""
+    convs = {}
+    if Path("conversations").exists():
+        for file in Path("conversations").glob("*.json"):
+            try:
+                with open(file) as f:
+                    messages = json.load(f)
+                    if messages:
+                        chat_id = file.stem
+                        preview = messages[0].get("content", "")[:40]
+                        convs[chat_id] = preview
+            except:
+                pass
+    st.session_state.conversations = convs
+
+def delete_conversation(chat_id):
+    """Delete a conversation"""
+    chat_file = f"conversations/{chat_id}.json"
+    if Path(chat_file).exists():
+        Path(chat_file).unlink()
+    st.session_state.conversations.pop(chat_id, None)
+    if st.session_state.current_chat_id == chat_id:
+        st.session_state.current_chat_id = None
+        st.session_state.chat_messages = []
+    st.rerun()
+
+def start_new_chat():
+    """Start a new conversation"""
+    save_conversation()
+    st.session_state.current_chat_id = generate_chat_id()
+    st.session_state.chat_messages = []
+    st.rerun()
+
+def load_chat(chat_id):
+    """Load a specific conversation"""
+    save_conversation()
+    st.session_state.current_chat_id = chat_id
+    chat_file = f"conversations/{chat_id}.json"
+    try:
+        with open(chat_file) as f:
+            st.session_state.chat_messages = json.load(f)
+    except:
+        st.session_state.chat_messages = []
+    st.rerun()
+
+def build_prompt(task_type, user_input, code_context=""):
+    """Build contextualized prompt based on task type"""
     
-    try:
-        url = "https://api.tavily.com/search"
-        payload = {
-            "api_key": TAVILY_API_KEY,
-            "query": query,
-            "include_answer": True,
-            "max_results": 5,
-            "search_depth": "basic"
-        }
-        
-        response = requests.post(url, json=payload, timeout=10)
-        
-        if response.status_code == 200:
-            data = response.json()
-            return {
-                "answer": data.get("answer", ""),
-                "results": data.get("results", []),
-                "success": True
-            }
-        elif response.status_code == 404:
-            st.warning("⚠️ Web search API endpoint not found. Check Tavily API key.")
-            return None
-        else:
-            st.warning(f"⚠️ Web search error: {response.status_code}")
-            return None
-    except Exception as e:
-        st.warning(f"⚠️ Web search error: {str(e)}")
-        return None
+    prompts = {
+        "🚀 Build": f"""Generate production-ready code based on this requirement:
 
-def format_sources(results):
-    if not results:
-        return ""
-    sources = "\n### 📚 Sources:\n"
-    for i, r in enumerate(results[:3], 1):
-        title = r.get('title', 'Link')
-        url = r.get('url', '#')
-        sources += f"{i}. [{title}]({url})\n"
-    return sources
+{user_input}
 
-def run_chain(template, variables):
-    try:
-        prompt = PromptTemplate.from_template(template)
-        chain = prompt | llm
-        response = chain.invoke(variables if variables else {})
-        result = response.content if hasattr(response, 'content') else str(response)
-        st.markdown(result)
-        return result
-    except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
-        return f"Error: {str(e)}"
+MUST INCLUDE:
+- All necessary imports
+- Comprehensive comments explaining logic
+- Full error handling
+- Clear variable names
+- Type hints where applicable
+- Usage example
+- Edge case handling
 
-def stream_response(placeholder, template, variables):
+Return ONLY complete code with no explanations.""",
+
+        "🐛 Debug": f"""Find and fix bugs in this code:
+
+{code_context}
+
+Issue description: {user_input}
+
+Provide:
+1. **Bugs found** - List each bug with location
+2. **Fixes applied** - How you fixed them
+3. **Fixed code** - Complete corrected code
+
+Return the fixed code at the end.""",
+
+        "🧪 Test": f"""Generate comprehensive test cases for this code:
+
+{code_context}
+
+Testing focus: {user_input}
+
+Include:
+- Normal case tests
+- Edge cases (empty, null, zero, negative)
+- Error handling tests
+- Clear comments
+- Ready to run
+
+Return ONLY complete test code.""",
+
+        "⚡ Optimize": f"""Optimize this code for: {user_input}
+
+Code to optimize:
+{code_context}
+
+Provide:
+1. **Analysis** - Performance bottlenecks identified
+2. **Optimizations** - Specific improvements
+3. **Optimized code** - Complete refactored code
+
+Return the optimized code at the end.""",
+
+        "📖 Explain": f"""Explain this code line-by-line:
+
+{code_context}
+
+Focus on: {user_input}
+
+Format each section:
+**Lines X-Y:**
+[show the code]
+
+**What it does:** Clear explanation
+**Why it matters:** Context and significance
+
+Be thorough for all logic.""",
+
+        "💡 Ask": f"""Answer this programming question:
+
+{user_input}
+
+Include:
+1. **Direct Answer** - Clear response
+2. **Explanation** - Why this is correct
+3. **Code Example** - If applicable
+4. **Best Practices** - Tips and tricks
+5. **Common Mistakes** - What to avoid"""
+    }
+    
+    return prompts.get(task_type, user_input)
+
+def stream_response(placeholder, prompt):
+    """Stream response from LLM"""
     try:
-        prompt = PromptTemplate.from_template(template)
-        chain = prompt | llm
+        prompt_obj = PromptTemplate.from_template(prompt)
+        chain = prompt_obj | llm
         full_response = ""
         
-        for chunk in chain.stream(variables if variables else {}):
+        for chunk in chain.stream({}):
             if hasattr(chunk, 'content'):
                 full_response += chunk.content
             else:
@@ -131,526 +340,163 @@ def stream_response(placeholder, template, variables):
         placeholder.markdown(full_response)
         return full_response
     except Exception as e:
-        placeholder.error(f"❌ Error: {str(e)}")
+        st.error(f"❌ Error: {str(e)}")
         return f"Error: {str(e)}"
 
-def save_code(filename, code, language):
-    ext = {"python": "py", "javascript": "js", "java": "java", "cpp": "cpp"}.get(language.lower(), "txt")
-    path = f"generated_code/{filename}.{ext}"
+def save_code(filename, code):
+    """Save generated code to file"""
+    path = f"generated_code/{filename}.txt"
     with open(path, "w") as f:
         f.write(code)
-    st.success(f"✅ Saved to: {path}")
+    st.success(f"✅ Saved: {path}")
     return path
 
-st.sidebar.title("⚡ Sorus AI")
-st.sidebar.markdown("---")
+# ============================================================================
+# SIDEBAR - CONVERSATION HISTORY
+# ============================================================================
 
-sections = ["🚀 Build", "🐛 Debug", "🧪 Test", "⚡ Optimize", "📖 Explain", "❓ Ask"]
-section = st.sidebar.selectbox("Choose Section:", sections)
+with st.sidebar:
+    st.title("⚡ Sorus AI")
+    st.markdown("---")
+    
+    # New Chat Button
+    if st.button("➕ New Chat", use_container_width=True):
+        start_new_chat()
+    
+    st.markdown("---")
+    st.subheader("💬 Chat History")
+    
+    # Load conversations
+    load_conversations()
+    
+    if st.session_state.conversations:
+        for chat_id, preview in sorted(st.session_state.conversations.items(), reverse=True):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                if st.button(f"📌 {preview}", key=f"load_{chat_id}", use_container_width=True):
+                    load_chat(chat_id)
+            with col2:
+                if st.button("🗑️", key=f"del_{chat_id}"):
+                    delete_conversation(chat_id)
+    else:
+        st.info("💡 No conversations yet. Start with ➕ New Chat!")
+    
+    st.markdown("---")
+    st.markdown("**Note:** Always review AI-generated code before using in production!")
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("💡 **Note:** Review all AI-generated code before using!")
+# ============================================================================
+# MAIN CHAT INTERFACE
+# ============================================================================
 
 st.title("⚡ Sorus AI - Coding Assistant")
 st.markdown("---")
 
-if section == "🚀 Build":
-    st.subheader("🚀 Build - Generate Code (Professional Flow)")
-    
-    requirement = st.text_area(
-        "What do you want to build?",
-        placeholder="Example: Create a Python function to sort a list using bubble sort with comments",
+# Start new chat if none selected
+if st.session_state.current_chat_id is None:
+    st.info("👈 Start a new chat or load one from history!")
+    st.stop()
+
+# Display chat history
+if st.session_state.chat_messages:
+    for msg in st.session_state.chat_messages:
+        role = msg["role"]
+        content = msg["content"]
+        
+        if role == "user":
+            st.markdown(f"""
+            <div class='chat-message user'>
+                <strong>You:</strong><br>
+                {content}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class='chat-message assistant'>
+                <strong>⚡ Sorus AI:</strong><br>
+                {content}
+            </div>
+            """, unsafe_allow_html=True)
+
+st.markdown("---")
+
+# Input Section
+col1, col2 = st.columns([4, 2])
+
+with col1:
+    user_input = st.text_area(
+        "Your message:",
+        placeholder="Type your request...",
+        height=80,
+        key="user_input"
+    )
+
+with col2:
+    st.write("")
+    task_type = st.selectbox(
+        "Task:",
+        list(TASK_TYPES.keys()),
+        key="task_type",
+        label_visibility="collapsed"
+    )
+
+# Code context (for code-related tasks)
+if task_type in ["🐛 Debug", "🧪 Test", "⚡ Optimize", "📖 Explain"]:
+    code_input = st.text_area(
+        "Paste your code:",
+        placeholder="Your code here...",
         height=120,
-        key="build_req"
+        key="code_input"
     )
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        language = st.selectbox("Language:", ["Python", "JavaScript", "Java", "C++"], key="build_lang")
-    with col2:
-        use_web = st.checkbox("🌐 Web Search", value=True, key="build_web")
-    with col3:
-        pass
-    
-    if st.button("🚀 Start Building", use_container_width=True, key="build_start"):
-        if not requirement.strip():
-            st.error("❌ Please describe what to build!")
+else:
+    code_input = ""
+
+# Action buttons
+col1, col2, col3 = st.columns([2, 2, 2])
+
+with col1:
+    if st.button("🚀 Send", use_container_width=True):
+        if not user_input.strip():
+            st.error("❌ Please enter a message!")
             st.stop()
         
-        st.session_state.build_code = None
+        # Build the prompt
+        full_prompt = build_prompt(task_type, user_input, code_input)
         
-        st.markdown("### 📚 PHASE 1: Understanding Requirements")
-        info_ph = st.empty()
+        # Add to chat history
+        st.session_state.chat_messages.append({
+            "role": "user",
+            "content": user_input
+        })
         
-        info_prompt = """Analyze this requirement and provide ONLY:
-
-REQUIREMENT: {requirement}
-LANGUAGE: {language}
-
-Format exactly:
-**KEY REQUIREMENTS:**
-- Requirement 1
-- Requirement 2
-
-**EDGE CASES:**
-- Edge case 1
-- Edge case 2
-
-**BEST PRACTICES:**
-- Practice 1
-- Practice 2
-
-Be concise."""
+        # Get response
+        with st.spinner("⏳ Generating response..."):
+            placeholder = st.empty()
+            response = stream_response(placeholder, full_prompt)
         
-        info = run_chain(info_prompt, {"requirement": requirement, "language": language})
-        info_ph.markdown(info)
+        # Save response
+        st.session_state.chat_messages.append({
+            "role": "assistant",
+            "content": response
+        })
         
-        st.markdown("### ⚙️ PHASE 2: Required Resources")
-        res_ph = st.empty()
-        
-        res_prompt = """What resources are needed for this {language} code?
+        # Save conversation
+        save_conversation()
+        st.rerun()
 
-REQUIREMENT: {requirement}
+with col2:
+    if st.button("💾 Save Code", use_container_width=True):
+        if code_input.strip():
+            filename = st.text_input("Filename:", value="code_output", key="save_fname")
+            if filename:
+                save_code(filename, code_input)
+        else:
+            st.warning("⚠️ No code to save!")
 
-Format exactly:
-**DEPENDENCIES:**
-- Dependency 1: why needed
-
-**MEMORY/PERFORMANCE:**
-- Requirement 1
-
-**SETUP:**
-- Setup step 1
-
-Be minimal and practical."""
-        
-        resources = run_chain(res_prompt, {"requirement": requirement, "language": language})
-        res_ph.markdown(resources)
-        
-        st.markdown("### 📋 PHASE 3: What We'll Do")
-        what_ph = st.empty()
-        
-        what_prompt = """For this requirement, explain the approach:
-
-REQUIREMENT: {requirement}
-LANGUAGE: {language}
-
-Format:
-**APPROACH:**
-Explain in 3-4 sentences what we'll do
-
-**ALGORITHM/METHOD:**
-- Step 1
-- Step 2
-- Step 3
-
-**OUTPUT:**
-What the final code will do"""
-        
-        what = run_chain(what_prompt, {"requirement": requirement, "language": language})
-        what_ph.markdown(what)
-        
-        st.markdown("### ✅ PHASE 4: Implementation Tasks")
-        tasks_ph = st.empty()
-        
-        tasks_prompt = """Break down the implementation into tasks:
-
-REQUIREMENT: {requirement}
-LANGUAGE: {language}
-
-Format:
-**TASK 1:** [name] - [description]
-**TASK 2:** [name] - [description]
-**TASK 3:** [name] - [description]
-**TASK 4:** [name] - [description]
-
-Each task should be specific and actionable."""
-        
-        tasks = run_chain(tasks_prompt, {"requirement": requirement, "language": language})
-        tasks_ph.markdown(tasks)
-        
-        if use_web:
-            st.markdown("### 🌐 PHASE 5: Best Practices from Web")
-            
-            with st.spinner("🔍 Searching for best practices..."):
-                search_query = f"{language} {' '.join(requirement.split()[0:4])} best practices"
-                st.info(f"🔍 Searching: '{search_query}'")
-                
-                search_result = web_search(search_query)
-                
-                if search_result and search_result.get("success"):
-                    answer = search_result.get("answer", "")
-                    results = search_result.get("results", [])
-                    
-                    if answer:
-                        st.markdown(f"<div class='web-result'><strong>📚 Web Results:</strong>\n\n{answer}</div>", unsafe_allow_html=True)
-                    
-                    sources = format_sources(results)
-                    if sources:
-                        st.markdown(sources)
-                    
-                    st.success("✅ Web search completed!")
-                else:
-                    st.warning("⚠️ Web search did not return results. Proceeding with generation...")
-        
-        st.markdown("### 💾 PHASE 6: Final Production-Ready Code")
-        code_ph = st.empty()
-        
-        code_prompt = """Generate ONE complete, production-ready {language} solution.
-
-REQUIREMENT: {requirement}
-
-MUST INCLUDE:
-- All necessary imports at the top
-- Comprehensive comments explaining each line
-- Full error handling
-- Type hints (if applicable)
-- At least one example showing how to use it
-- Handle edge cases
-- Clean, readable code
-
-Return ONLY the complete code - nothing else, no explanations."""
-        
-        final_code = stream_response(code_ph, code_prompt, {"requirement": requirement, "language": language})
-        st.session_state.build_code = final_code
-        
-        st.markdown("---")
-        st.subheader("💾 Save Your Code")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            filename = st.text_input("Filename:", value="my_code", key="build_fname")
-        with col2:
-            if st.button("💾 Save", use_container_width=True, key="build_save"):
-                if filename:
-                    save_code(filename, final_code, language)
-        with col3:
-            if st.button("📋 Copy", use_container_width=True, key="build_copy"):
-                st.code(final_code, language=language.lower())
-    
-    st.markdown("---")
-    if st.session_state.build_code:
-        st.subheader("💬 Ask About This Code")
-        followup = st.text_input(
-            "What do you want to know about the generated code?",
-            key="build_followup_input"
-        )
-        
-        if followup and followup.strip():
-            st.markdown("---")
-            st.markdown("### 📝 Answer:")
-            
-            followup_prompt = """Answer this question about the code:
-
-CODE:
-{code}
-
-QUESTION: {question}
-
-Provide a clear, helpful answer."""
-            
-            run_chain(followup_prompt, {"code": st.session_state.build_code, "question": followup})
-    else:
-        st.info("💡 Generate code first, then ask follow-up questions here!")
-
-elif section == "🐛 Debug":
-    st.subheader("🐛 Debug - Fix Broken Code")
-    
-    code_input = st.text_area("Paste buggy code:", placeholder="Paste code with errors...", height=200, key="debug_code")
-    language = st.selectbox("Language:", ["Python", "JavaScript", "Java", "C++"], key="debug_lang")
-    error_msg = st.text_input("Error message (optional):", key="debug_error")
-    
-    if st.button("🔍 Find & Fix Bugs", use_container_width=True, key="debug_start"):
-        if not code_input.strip():
-            st.error("❌ Paste some code!")
-            st.stop()
-        
-        st.subheader("🐛 Issues Found")
-        issues_ph = st.empty()
-        
-        issues_prompt = """Find ALL bugs in this {language} code:
-
-CODE:
-{code}
-
-Error: {error}
-
-List each bug:
-1. **What's wrong:** [description]
-2. **Where:** [line or location]
-3. **Severity:** [Critical/High/Medium]
-4. **How to fix:** [solution]"""
-        
-        issues = run_chain(issues_prompt, {"language": language, "code": code_input, "error": error_msg if error_msg else "None"})
-        issues_ph.markdown(issues)
-        
-        st.subheader("✅ Fixed Code")
-        fixed_ph = st.empty()
-        
-        fixed_prompt = """Fix ALL bugs in this {language} code:
-
-CODE:
-{code}
-
-Return ONLY the complete fixed code, no explanations."""
-        
-        fixed_code = stream_response(fixed_ph, fixed_prompt, {"language": language, "code": code_input})
-        
-        st.markdown("---")
-        col1, col2 = st.columns(2)
-        with col1:
-            fname = st.text_input("Save as:", value="fixed_code", key="debug_fname")
-            if st.button("💾 Save", use_container_width=True, key="debug_save"):
-                save_code(fname, fixed_code, language)
-        with col2:
-            if st.button("📋 Copy", use_container_width=True, key="debug_copy"):
-                st.code(fixed_code, language=language.lower())
-
-elif section == "🧪 Test":
-    st.subheader("🧪 Test - Generate Test Cases")
-    
-    code_input = st.text_area("Paste code to test:", placeholder="Paste code...", height=200, key="test_code")
-    language = st.selectbox("Language:", ["Python", "JavaScript", "Java", "C++"], key="test_lang")
-    framework = st.text_input("Test framework:", value="pytest", key="test_framework")
-    
-    if st.button("🧪 Generate Tests", use_container_width=True, key="test_start"):
-        if not code_input.strip():
-            st.error("❌ Paste some code!")
-            st.stop()
-        
-        st.subheader("📝 Test Cases")
-        tests_ph = st.empty()
-        
-        tests_prompt = """Generate complete {framework} test cases for this {language} code:
-
-CODE:
-{code}
-
-Include:
-- Normal case tests
-- Edge case tests (empty, zero, negative, null, etc.)
-- Error handling tests
-- Clear comments
-- Ready to run
-
-Return ONLY complete test code, no explanations."""
-        
-        tests_code = stream_response(tests_ph, tests_prompt, {"framework": framework, "language": language, "code": code_input})
-        
-        st.markdown("---")
-        col1, col2 = st.columns(2)
-        with col1:
-            fname = st.text_input("Save as:", value="tests", key="test_fname")
-            if st.button("💾 Save", use_container_width=True, key="test_save"):
-                save_code(fname, tests_code, language)
-        with col2:
-            if st.button("📋 Copy", use_container_width=True, key="test_copy"):
-                st.code(tests_code, language=language.lower())
-
-elif section == "⚡ Optimize":
-    st.subheader("⚡ Optimize - Make Code Faster")
-    
-    code_input = st.text_area("Paste code:", placeholder="Paste code to optimize...", height=200, key="opt_code")
-    language = st.selectbox("Language:", ["Python", "JavaScript", "Java", "C++"], key="opt_lang")
-    goal = st.selectbox("Optimize for:", ["Speed (faster)", "Memory (less RAM)", "Readability"], key="opt_goal")
-    
-    if st.button("⚡ Optimize", use_container_width=True, key="opt_start"):
-        if not code_input.strip():
-            st.error("❌ Paste some code!")
-            st.stop()
-        
-        st.subheader("📊 Analysis")
-        analysis_ph = st.empty()
-        
-        analysis_prompt = """Analyze this {language} code and suggest optimizations:
-
-CODE:
-{code}
-
-Optimize for: {goal}
-
-Explain:
-1. **Bottlenecks:** What's slow/inefficient
-2. **Problems:** Specific issues
-3. **Solutions:** How to improve
-4. **Impact:** Expected improvement"""
-        
-        analysis = run_chain(analysis_prompt, {"language": language, "code": code_input, "goal": goal})
-        analysis_ph.markdown(analysis)
-        
-        st.subheader("✨ Optimized Code")
-        opt_ph = st.empty()
-        
-        opt_prompt = """Create optimized {language} code for {goal}:
-
-CODE:
-{code}
-
-Return ONLY complete optimized code, no explanations."""
-        
-        opt_code = stream_response(opt_ph, opt_prompt, {"language": language, "code": code_input, "goal": goal})
-        
-        st.markdown("---")
-        col1, col2 = st.columns(2)
-        with col1:
-            fname = st.text_input("Save as:", value="optimized", key="opt_fname")
-            if st.button("💾 Save", use_container_width=True, key="opt_save"):
-                save_code(fname, opt_code, language)
-        with col2:
-            if st.button("📋 Copy", use_container_width=True, key="opt_copy"):
-                st.code(opt_code, language=language.lower())
-
-elif section == "📖 Explain":
-    st.subheader("📖 Explain - Line-by-Line Code Explanation")
-    
-    code_input = st.text_area("Paste code to explain:", placeholder="Paste code...", height=200, key="explain_code")
-    language = st.selectbox("Language:", ["Python", "JavaScript", "Java", "C++"], key="explain_lang")
-    level = st.selectbox("Explain for:", ["Beginners", "Intermediate", "Advanced"], key="explain_level")
-    
-    if st.button("📖 Explain Each Line", use_container_width=True, key="explain_start"):
-        if not code_input.strip():
-            st.error("❌ Paste some code!")
-            st.stop()
-        
-        st.session_state.explain_code_content = code_input
-        
-        st.subheader("📖 Line-by-Line Explanation")
-        explain_ph = st.empty()
-        
-        explain_prompt = """Explain this {language} code line by line for {level}:
-
-CODE:
-{code}
-
-Format for EACH LINE OR GROUP OF RELATED LINES:
-
-**Line X-Y:**
-[show the actual code line]
-
-**Explanation:** [explain what this line does in simple terms for {level}]
-**Why:** [why is this important]
-
-Go through the entire code. Be thorough and clear."""
-        
-        explanation = stream_response(explain_ph, explain_prompt, {"language": language, "level": level, "code": code_input})
-        
-        st.markdown("---")
-        if st.checkbox("🌐 Add web best practices?", key="explain_web"):
-            with st.spinner("🔍 Searching for best practices..."):
-                search_query = f"{language} best practices"
-                search_result = web_search(search_query)
-                
-                if search_result and search_result.get("success"):
-                    answer = search_result.get("answer", "")
-                    results = search_result.get("results", [])
-                    
-                    st.markdown("### 💡 Best Practices from Web:")
-                    if answer:
-                        st.markdown(f"<div class='web-result'>{answer}</div>", unsafe_allow_html=True)
-                    
-                    sources = format_sources(results)
-                    if sources:
-                        st.markdown(sources)
-    
-    st.markdown("---")
-    if st.session_state.explain_code_content:
-        st.subheader("💬 Ask About This Code")
-        followup = st.text_input("Ask a follow-up question about the code:", key="explain_followup_input")
-        
-        if followup and followup.strip():
-            st.markdown("---")
-            st.markdown("### 📝 Answer:")
-            
-            followup_prompt = """Answer this question about the code for {level}:
-
-CODE:
-{code}
-
-QUESTION: {question}
-
-Give a clear, helpful answer suitable for {level}."""
-            
-            run_chain(followup_prompt, {"level": st.session_state.explain_code_content, "code": st.session_state.explain_code_content, "question": followup, "level": level})
-    else:
-        st.info("💡 Explain code first, then ask follow-up questions!")
-
-elif section == "❓ Ask":
-    st.subheader("❓ Ask - Ask About Programming")
-    
-    question = st.text_area(
-        "Your question:",
-        placeholder="Ask anything about coding, programming, best practices, etc...",
-        height=150,
-        key="ask_input"
-    )
-    
-    use_web = st.checkbox("🌐 Search web for answer?", value=True, key="ask_web")
-    
-    if st.button("💬 Get Answer", use_container_width=True, key="ask_start"):
-        if not question.strip():
-            st.error("❌ Ask a question!")
-            st.stop()
-        
-        st.session_state.ask_response = question
-        
-        st.subheader("💡 Answer")
-        answer_ph = st.empty()
-        
-        answer_prompt = """Answer this programming question:
-
-{question}
-
-Include:
-1. **Direct Answer:** [clear answer]
-2. **Explanation:** [why this is the answer]
-3. **Code Example:** [if helpful]
-4. **Best Practices:** [tips]
-5. **Common Mistakes:** [what to avoid]
-
-Be thorough and beginner-friendly."""
-        
-        answer = stream_response(answer_ph, answer_prompt, {"question": question})
-        st.session_state.ask_response = answer
-        
-        if use_web:
-            st.markdown("---")
-            with st.spinner("🌐 Searching web for additional resources..."):
-                search_result = web_search(question)
-                
-                if search_result and search_result.get("success"):
-                    answer_text = search_result.get("answer", "")
-                    results = search_result.get("results", [])
-                    
-                    st.markdown("### 📚 Additional Resources:")
-                    if answer_text:
-                        st.markdown(f"<div class='web-result'>{answer_text}</div>", unsafe_allow_html=True)
-                    
-                    sources = format_sources(results)
-                    if sources:
-                        st.markdown(sources)
-    
-    st.markdown("---")
-    if st.session_state.ask_response:
-        st.subheader("💬 Ask Follow-up Questions")
-        followup = st.text_input("Ask another question or request clarification:", key="ask_followup_input")
-        
-        if followup and followup.strip():
-            st.markdown("---")
-            st.markdown("### 📝 Follow-up Answer:")
-            
-            followup_prompt = """Based on this previous answer:
-
-{previous_answer}
-
-Now answer this follow-up question:
-
-{question}
-
-Be clear and helpful."""
-            
-            run_chain(followup_prompt, {"previous_answer": st.session_state.ask_response[:500], "question": followup})
-    else:
-        st.info("💡 Ask a question first!")
+with col3:
+    if st.button("🗑️ Clear Chat", use_container_width=True):
+        if st.session_state.current_chat_id:
+            delete_conversation(st.session_state.current_chat_id)
+            start_new_chat()
 
 st.markdown("---")
 st.markdown("""
