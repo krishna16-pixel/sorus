@@ -161,21 +161,7 @@ Path("conversations").mkdir(exist_ok=True)
 Path("generated_code").mkdir(exist_ok=True)
 
 # ============================================================================
-# SESSION STATE
-# ============================================================================
-
-if "conversations" not in st.session_state:
-    st.session_state.conversations = {}
-    load_conversations()
-
-if "current_chat_id" not in st.session_state:
-    st.session_state.current_chat_id = None
-
-if "chat_messages" not in st.session_state:
-    st.session_state.chat_messages = []
-
-# ============================================================================
-# UTILITY FUNCTIONS
+# UTILITY FUNCTIONS (DEFINED FIRST)
 # ============================================================================
 
 def generate_chat_id():
@@ -350,6 +336,20 @@ def save_code(filename, code):
         f.write(code)
     st.success(f"✅ Saved: {path}")
     return path
+
+# ============================================================================
+# SESSION STATE
+# ============================================================================
+
+if "conversations" not in st.session_state:
+    st.session_state.conversations = {}
+    load_conversations()
+
+if "current_chat_id" not in st.session_state:
+    st.session_state.current_chat_id = None
+
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = []
 
 # ============================================================================
 # SIDEBAR - CONVERSATION HISTORY
